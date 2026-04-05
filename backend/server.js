@@ -6,6 +6,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const supportRoutes = require('./routes/supportRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 
@@ -15,6 +16,7 @@ app.use(express.json());
 
 // ── Routes ──────────────────────────────────────────────
 app.use('/api/support', supportRoutes);
+app.use('/api/auth', authRoutes);
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
