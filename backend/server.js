@@ -10,12 +10,17 @@ const supportRoutes = require('./routes/supportRoutes')
 
 connectDB();
 
+const supportRoutes = require('./routes/supportRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 
 
 app.use(express.json());
 
+// ── Routes ──────────────────────────────────────────────
+app.use('/api/support', supportRoutes);
+app.use('/api/auth', authRoutes);
 
 app.use(cors({
     origin: 'http://localhost:5173',

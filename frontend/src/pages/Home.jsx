@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const Home = () => {
   const [scrolled, setScrolled] = useState(false);
   const [searchLocation, setSearchLocation] = useState('');
-  const [budget, setBudget] = useState('Rs.200 - Rs.500 / mo');
+  const [budget, setBudget] = useState('Rs.2,000 - Rs.5,000 / Mo');
   const [gender, setGender] = useState('Mixed');
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -97,10 +100,13 @@ const Home = () => {
       {/* ════════════ NAVBAR ════════════ */}
       <nav className={`fixed top-0 left-0 right-0 z-[999] transition-all duration-300 ${scrolled ? 'bg-[#0d1117]/92 backdrop-blur-lg border-b border-white/7 py-3' : 'py-[18px]'}`}>
         <div className="max-w-[1200px] mx-auto px-8 flex items-center gap-8">
-          <div className="flex items-center gap-2.5">
+          {/* Logo */}
+          <div className="flex items-center gap-2.5 flex-shrink-0">
             <div className="w-9 h-9 bg-blue-500 rounded-[10px] flex items-center justify-center text-lg">🏠</div>
             <span className="font-display text-[1.3rem] font-extrabold text-[#f0f4ff]">Uni<span className="text-blue-400">NEST</span></span>
           </div>
+
+          {/* Nav links */}
           <ul className="hidden md:flex gap-1 ml-auto">
             {[['#browse','Home'],['#universities','Bookings'],['#listings','Top Listings']].map(([href,label])=>(
               <li key={label}><a href={href} className="px-3.5 py-2 rounded-lg text-[#8a96b0] text-sm hover:text-[#f0f4ff] hover:bg-white/5 transition-all duration-300">{label}</a></li>
@@ -108,11 +114,30 @@ const Home = () => {
             <li><Link to="/support" className="px-3.5 py-2 rounded-lg text-[#8a96b0] text-sm hover:text-[#f0f4ff] hover:bg-white/5 transition-all duration-300">Student Support</Link></li>
             <li><Link to="/about"   className="px-3.5 py-2 rounded-lg text-[#8a96b0] text-sm hover:text-[#f0f4ff] hover:bg-white/5 transition-all duration-300">About Us</Link></li>
           </ul>
-          <div className="hidden md:flex gap-2.5 items-center">
-            <a href="#login"  className="px-5 py-2 rounded-lg text-[#8a96b0] text-sm hover:text-[#f0f4ff] transition-all duration-300">Sign Up</a>
-            <a href="#signup" className="px-5 py-2 rounded-lg bg-blue-500 text-white text-sm font-medium hover:bg-blue-400 hover:-translate-y-px hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-300">Log In</a>
+
+          {/* ── Auth area: guest vs logged-in ── */}
+          <div className="hidden md:flex gap-2.5 items-center ml-4 flex-shrink-0">
+            {user ? (
+              /* Logged in → profile avatar button */
+              <button
+                onClick={() => navigate('/profile')}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 hover:border-blue-500/40 hover:bg-blue-500/8 transition-all duration-300"
+              >
+                <div className="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center text-white text-xs font-bold select-none">
+                  {user.firstName?.[0]?.toUpperCase()}{user.lastName?.[0]?.toUpperCase()}
+                </div>
+                <span className="text-[#f0f4ff] text-sm font-medium">{user.firstName}</span>
+                <span className="text-[#5a6478] text-xs">▾</span>
+              </button>
+            ) : (
+              /* Guest → Sign Up + Log In */
+              <>
+                <Link to="/signup" className="px-5 py-2 rounded-lg text-[#8a96b0] text-sm hover:text-[#f0f4ff] transition-all duration-300">Sign Up</Link>
+                <Link to="/login"  className="px-5 py-2 rounded-lg bg-blue-500 text-white text-sm font-medium hover:bg-blue-400 hover:-translate-y-px hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-300">Log In</Link>
+              </>
+            )}
           </div>
-          {/* Hamburger — visible only on mobile */}
+
           <button className="md:hidden ml-auto bg-transparent text-[#f0f4ff] text-2xl cursor-pointer" aria-label="menu">☰</button>
         </div>
       </nav>
@@ -133,7 +158,6 @@ const Home = () => {
 
           {/* Search Box */}
           <div className="animate-fade-up delay-3 bg-[#161b25] border border-white/7 rounded-[20px] p-2.5 pl-6 flex flex-col md:flex-row items-stretch md:items-center gap-3 md:gap-0 shadow-[0_20px_60px_rgba(0,0,0,0.4),0_0_0_1px_rgba(45,126,247,0.1)] mb-5 search-focus transition-all duration-300">
-            {/* Location */}
             <div className="flex-1 py-2 md:pr-5">
               <label className="block text-[0.7rem] font-semibold tracking-[0.08em] text-[#5a6478] mb-1">LOCATION</label>
               <div className="flex items-center gap-2">
@@ -143,7 +167,6 @@ const Home = () => {
               </div>
             </div>
             <div className="hidden md:block w-px h-10 bg-white/7 flex-shrink-0" />
-            {/* Budget */}
             <div className="flex-1 py-2 px-0 md:px-5">
               <label className="block text-[0.7rem] font-semibold tracking-[0.08em] text-[#5a6478] mb-1">BUDGET</label>
               <div className="flex items-center gap-2">
@@ -158,7 +181,6 @@ const Home = () => {
               </div>
             </div>
             <div className="hidden md:block w-px h-10 bg-white/7 flex-shrink-0" />
-            {/* Gender */}
             <div className="flex-1 py-2 px-0 md:px-5">
               <label className="block text-[0.7rem] font-semibold tracking-[0.08em] text-[#5a6478] mb-1">GENDER</label>
               <div className="flex items-center gap-2">
@@ -176,7 +198,6 @@ const Home = () => {
             </button>
           </div>
 
-          {/* Popular Tags */}
           <div className="animate-fade-up delay-4 flex items-center gap-2.5 justify-center flex-wrap">
             <span className="text-[#5a6478] text-sm">Popular:</span>
             {['📶 WiFi','❄️ AC','👕 Laundry','🏋️ Gym'].map(tag=>(
