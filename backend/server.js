@@ -1,43 +1,39 @@
+require('dotenv').config();
 
-require('dotenv').config(); 
-
-const express = require('express');
-const cors = require('cors');
-const connectDB = require('./config/db'); 
-const annexRoutes = require('./routes/annexRoutes'); 
+const express       = require('express');
+const cors          = require('cors');
+const connectDB     = require('./config/db');
+const annexRoutes   = require('./routes/annexRoutes');
 const supportRoutes = require('./routes/supportRoutes');
-const authRoutes = require('./routes/authRoutes');
-
+const authRoutes    = require('./routes/authRoutes');
 
 connectDB();
 
-
-
 const app = express();
 
-
-app.use(express.json());
-
-// ── Routes ──────────────────────────────────────────────
-app.use('/api/support', supportRoutes);
-app.use('/api/auth', authRoutes);
-
+// ── 1. CORS first — before everything else ──────────────
 app.use(cors({
-    origin: 'http://localhost:5173',
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 }));
 
+// ── 2. Body parser ──────────────────────────────────────
+app.use(express.json());
 
+// ── 3. Routes — each registered ONCE ───────────────────
+app.use('/api/support', supportRoutes);
+app.use('/api/auth',    authRoutes);
+app.use('/api/annexes', annexRoutes);
+
+// ── 4. Health check ─────────────────────────────────────
 app.get('/', (req, res) => {
-    res.send('Student Annex Backend API is running securely!');
+  res.send('Student Annex Backend API is running!');
 });
 
-app.use('/api/support', supportRoutes);
-app.use('/api/annexes', annexRoutes); 
-
-// Start the Server
+// ── 5. Start server ─────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-    console.log(`🚀 Server is running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
