@@ -11,6 +11,8 @@ import Login from './pages/Login';
 import Profile from './pages/Profile';
 import AdminLogin from './pages/AdminLogin'; 
 import './App.css'
+import SearchAnnex from './pages/SearchAnnex';
+import AddAnnexPage from './pages/AddAnnexPage';
 
 
 
@@ -27,7 +29,9 @@ function App() {
           <Route path="/signup" element={<SignUp />} />
           <Route path="/login" element={<Login />} />
           <Route path="/profile" element={<Profile />} />
-         <Route path="/admin-login" element={<AdminLogin />} />
+          <Route path="/searchAnnex" element={<SearchAnnex/>} />
+          <Route path="/admin-login" element={<AdminLogin />} />
+          <Route path="/addAnnex" element={<AddAnnexPage />} />
         </Routes>
       </Router>
     </AuthProvider>
