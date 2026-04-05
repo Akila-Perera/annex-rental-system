@@ -5,13 +5,13 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db'); 
 const annexRoutes = require('./routes/annexRoutes'); 
-const supportRoutes = require('./routes/supportRoutes')
+const supportRoutes = require('./routes/supportRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 
 connectDB();
 
-const supportRoutes = require('./routes/supportRoutes');
-const authRoutes = require('./routes/authRoutes');
+
 
 const app = express();
 
