@@ -8,9 +8,16 @@ const annexRoutes   = require('./routes/annexRoutes');
 const supportRoutes = require('./routes/supportRoutes');
 const authRoutes    = require('./routes/authRoutes');
 const setServers = require('dns').setServers;
-const reviewRoutes = require('./routes/reviewRoutes');
-const adminRoutes = require('./routes/adminRoutes');
-const qualityRoutes = require('./routes/qualityRoutes');
+
+// Routes written as ES modules export the router as default.
+// When required from CommonJS we need to unwrap `.default`.
+const reviewRoutesModule  = require('./routes/reviewRoutes');
+const adminRoutesModule   = require('./routes/adminRoutes');
+const qualityRoutesModule = require('./routes/qualityRoutes');
+
+const reviewRoutes  = reviewRoutesModule.default  || reviewRoutesModule;
+const adminRoutes   = adminRoutesModule.default   || adminRoutesModule;
+const qualityRoutes = qualityRoutesModule.default || qualityRoutesModule;
 
 setServers(["1.1.1.1", "8.8.8.8"]);
 
