@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const User = require('../models/UserModel');  // Changed from User to UserModel
 
 const protect = async (req, res, next) => {
   let token;

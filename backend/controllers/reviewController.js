@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import Review from '../models/Review.js';
 import Booking from '../models/Booking.js';
-import Property from '../models/Property.js';
+import Property from '../models/Annex.js';  // Changed from Property to Annex
 
 // @desc    Create a new review (only for verified bookings)
 // @route   POST /api/reviews
@@ -45,8 +45,8 @@ export const createReview = async (req, res) => {
       pros: pros || [],
       cons: cons || [],
       photos: photos || [],
-      isVerified: true, // Verified because it's from a completed booking
-      status: 'pending' // Needs admin approval
+      isVerified: true,
+      status: 'pending'
     });
 
     await review.save();
@@ -77,7 +77,6 @@ export const getPropertyReviews = async (req, res) => {
     const { propertyId } = req.params;
     const { page = 1, limit = 10, sort = 'newest' } = req.query;
 
-    // Build sort object
     let sortOption = {};
     switch(sort) {
       case 'newest':
@@ -99,7 +98,6 @@ export const getPropertyReviews = async (req, res) => {
         sortOption = { createdAt: -1 };
     }
 
-    // Get reviews
     const reviews = await Review.find({ 
       property: propertyId, 
       status: 'approved' 
@@ -109,13 +107,11 @@ export const getPropertyReviews = async (req, res) => {
     .limit(limit * 1)
     .skip((page - 1) * limit);
 
-    // Get total count
     const total = await Review.countDocuments({ 
       property: propertyId, 
       status: 'approved' 
     });
 
-    // Calculate average rating - FIXED: removed mongoose.Types.ObjectId
     const avgResult = await Review.aggregate([
       { $match: { property: new mongoose.Types.ObjectId(propertyId), status: 'approved' } },
       { $group: { _id: null, average: { $avg: '$ratings.overall' } } }
@@ -179,7 +175,6 @@ export const reportReview = async (req, res) => {
       { new: true }
     );
 
-    // Auto-flag if reported 3 or more times
     if (review.reportedCount >= 3) {
       review.status = 'flagged';
       await review.save();
