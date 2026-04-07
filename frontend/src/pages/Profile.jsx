@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function Profile() {
   const { user, token, login, logout } = useAuth();
@@ -12,13 +12,43 @@ export default function Profile() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [ownerAnnexes, setOwnerAnnexes] = useState([]);
+  const [annexLoading, setAnnexLoading] = useState(false);
+  const [editingAnnexId, setEditingAnnexId] = useState(null);
+  const [annexEditData, setAnnexEditData] = useState({
+    title: '',
+    price: '',
+    description: '',
+    preferredGender: 'Any',
+  });
 
-  if (!user) {
-    navigate('/login');
-    return null;
-  }
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
 
-  const isLandlord = user.role === 'landlord';
+  const isLandlord = user?.role === 'landlord';
+
+  const fetchOwnerAnnexes = async () => {
+    if (!isLandlord || !user?.id) return;
+    setAnnexLoading(true);
+    try {
+      const res = await fetch(`http://localhost:5000/api/annexes/owner/${user.id}`);
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setOwnerAnnexes(data.data || []);
+      }
+    } catch (fetchError) {
+      console.error('Error fetching owner annexes:', fetchError);
+    } finally {
+      setAnnexLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOwnerAnnexes();
+  }, [isLandlord, user?.id]);
 
   const startEdit = () => {
     setEditData({
@@ -92,6 +122,84 @@ export default function Profile() {
     logout();
     navigate('/');
   };
+
+  const startAnnexEdit = (annex) => {
+    setEditingAnnexId(annex._id);
+    setAnnexEditData({
+      title: annex.title || '',
+      price: annex.price || '',
+      description: annex.description || '',
+      preferredGender: annex.preferredGender || 'Any',
+    });
+    setError('');
+    setSuccess('');
+  };
+
+  const cancelAnnexEdit = () => {
+    setEditingAnnexId(null);
+  };
+
+  const saveAnnexEdit = async (annexId) => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const res = await fetch(`http://localhost:5000/api/annexes/${annexId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ownerId: user.id,
+          ...annexEditData,
+          price: Number(annexEditData.price),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.message || 'Failed to update annex.');
+      } else {
+        setSuccess('Annex updated successfully.');
+        setEditingAnnexId(null);
+        fetchOwnerAnnexes();
+      }
+    } catch {
+      setError('Server error while updating annex.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteAnnex = async (annexId) => {
+    const ok = window.confirm('Are you sure you want to delete this annex?');
+    if (!ok) return;
+
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const res = await fetch(`http://localhost:5000/api/annexes/${annexId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ownerId: user.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.message || 'Failed to delete annex.');
+      } else {
+        setSuccess('Annex deleted successfully.');
+        fetchOwnerAnnexes();
+      }
+    } catch {
+      setError('Server error while deleting annex.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-[#0a0f1e] px-4 py-12">
@@ -227,12 +335,98 @@ export default function Profile() {
           <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-6 shadow-2xl mb-6">
             <h2 className="text-white text-lg font-semibold mb-2">Manage Your Listings</h2>
             <p className="text-gray-400 text-sm mb-5">Add your annex or boarding house so students can find and book it.</p>
-            <button disabled
-              className="bg-blue-600 text-white rounded-xl px-6 py-3 text-sm font-semibold flex items-center gap-2 opacity-90 cursor-not-allowed"
-              title="Coming soon">
-              <span className="text-lg">＋</span> Add Annex
-            </button>
-            <p className="text-gray-600 text-xs mt-3">Listing management — coming soon.</p>
+            <Link to="/addAnnex"
+              className="inline-block px-5 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl text-sm font-medium transition-all">
+              ➕ Add New Annex
+            </Link>
+
+            <div className="mt-6">
+              <h3 className="text-white text-sm font-semibold mb-3">Your Added Annexes</h3>
+              {annexLoading && (
+                <p className="text-gray-400 text-sm">Loading your annexes...</p>
+              )}
+
+              {!annexLoading && ownerAnnexes.length === 0 && (
+                <p className="text-gray-500 text-sm">You have not added any annexes yet.</p>
+              )}
+
+              {!annexLoading && ownerAnnexes.length > 0 && (
+                <div className="space-y-3">
+                  {ownerAnnexes.map((annex) => (
+                    <div key={annex._id} className="bg-[#0d1526] border border-[#1f2a3c] rounded-xl p-4">
+                      {editingAnnexId === annex._id ? (
+                        <div className="space-y-3">
+                          <input
+                            type="text"
+                            value={annexEditData.title}
+                            onChange={(e) => setAnnexEditData({ ...annexEditData, title: e.target.value })}
+                            className="w-full bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-3 py-2 text-sm"
+                          />
+                          <input
+                            type="number"
+                            value={annexEditData.price}
+                            onChange={(e) => setAnnexEditData({ ...annexEditData, price: e.target.value })}
+                            className="w-full bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-3 py-2 text-sm"
+                          />
+                          <select
+                            value={annexEditData.preferredGender}
+                            onChange={(e) => setAnnexEditData({ ...annexEditData, preferredGender: e.target.value })}
+                            className="w-full bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-3 py-2 text-sm"
+                          >
+                            <option value="Any">Any</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                          </select>
+                          <textarea
+                            value={annexEditData.description}
+                            onChange={(e) => setAnnexEditData({ ...annexEditData, description: e.target.value })}
+                            rows={3}
+                            className="w-full bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-3 py-2 text-sm"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => saveAnnexEdit(annex._id)}
+                              disabled={loading}
+                              className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={cancelAnnexEdit}
+                              className="px-3 py-1.5 rounded-lg border border-[#334155] text-gray-300 text-xs font-semibold"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-white font-semibold">{annex.title}</p>
+                          <p className="text-blue-400 text-sm mt-1">Rs. {annex.price} / month</p>
+                          {annex.selectedAddress && (
+                            <p className="text-gray-400 text-xs mt-1">{annex.selectedAddress}</p>
+                          )}
+                          <div className="flex gap-2 mt-3">
+                            <button
+                              onClick={() => startAnnexEdit(annex)}
+                              className="px-3 py-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-300 text-xs font-semibold"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => deleteAnnex(annex._id)}
+                              className="px-3 py-1.5 rounded-lg bg-red-600/20 border border-red-500/30 text-red-300 text-xs font-semibold"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

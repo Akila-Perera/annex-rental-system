@@ -193,9 +193,7 @@ const Home = () => {
                 </select>
               </div>
             </div>
-            <button className="flex items-center justify-center gap-2 px-7 py-3.5 rounded-[14px] bg-blue-500 text-white text-[0.95rem] font-semibold cursor-pointer hover:bg-blue-400 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-300 flex-shrink-0 whitespace-nowrap md:ml-1">
-              <span>🔍</span> Search Annex
-            </button>
+            <Link to="/searchAnnex" className="flex-shrink-0 bg-blue-500 hover:bg-blue-400 text-white px-5 py-2 rounded-lg text-sm font-medium transition-all duration-300">  Search Annex</Link>
           </div>
 
           <div className="animate-fade-up delay-4 flex items-center gap-2.5 justify-center flex-wrap">

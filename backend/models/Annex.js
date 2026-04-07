@@ -1,9 +1,19 @@
 const mongoose = require('mongoose');
 
 const annexSchema = new mongoose.Schema({
+    ownerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
     title: { type: String, required: true },
     price: { type: Number, required: true },
     description: { type: String },
+    imageUrl: { type: String },
+    imageUrls: [{ type: String }],
+    selectedAddress: { type: String },
+    features: [{ type: String }],
+    rulesAndConditions: [{ type: String }],
     tags: [{ type: String }], 
     
     // Add the gender preference
