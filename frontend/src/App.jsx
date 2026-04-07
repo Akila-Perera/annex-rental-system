@@ -1,5 +1,3 @@
-
-
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import AboutUs from './pages/AboutUs';
@@ -15,14 +13,18 @@ import SearchAnnex from './pages/SearchAnnex';
 import AddAnnexPage from './pages/AddAnnexPage';
 import AnnexDetailsPage from './pages/AnnexDetailsPage';
 
-
-
+// Import your review system pages
+import Properties from './pages/Properties';
+import PropertyDetails from './pages/PropertyDetails';
+import WriteReview from './pages/WriteReview';
+import AdminDashboard from './pages/AdminDashboard';
 
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Routes>
+          {/* Existing routes */}
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<AboutUs />} />
           <Route path="/support" element={<SupportForm />} />
@@ -34,10 +36,16 @@ function App() {
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/addAnnex" element={<AddAnnexPage />} />
           <Route path="/annex/:id" element={<AnnexDetailsPage />} />
+          
+          {/* Your Review System Routes */}
+          <Route path="/properties" element={<Properties />} />
+          <Route path="/property/:id" element={<PropertyDetails />} />
+          <Route path="/write-review/:propertyId?" element={<WriteReview />} />
+          <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
       </Router>
     </AuthProvider>
   );
 }
- 
+
 export default App;
