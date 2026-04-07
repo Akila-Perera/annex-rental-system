@@ -13,6 +13,7 @@ import AdminLogin from './pages/AdminLogin';
 import './App.css'
 import SearchAnnex from './pages/SearchAnnex';
 import AddAnnexPage from './pages/AddAnnexPage';
+import AnnexDetailsPage from './pages/AnnexDetailsPage';
 
 
 
@@ -32,6 +33,7 @@ function App() {
           <Route path="/searchAnnex" element={<SearchAnnex/>} />
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/addAnnex" element={<AddAnnexPage />} />
+          <Route path="/annex/:id" element={<AnnexDetailsPage />} />
         </Routes>
       </Router>
     </AuthProvider>
