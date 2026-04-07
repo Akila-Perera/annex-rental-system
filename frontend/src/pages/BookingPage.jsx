@@ -17,6 +17,14 @@ function daysBetween(start, end) {
   return diff > 0 ? diff : 0;
 }
 
+function addMonthsToISO(iso, months) {
+  const base = parseISODate(iso);
+  if (!base) return '';
+  const next = new Date(base);
+  next.setMonth(next.getMonth() + months);
+  return getISODate(next);
+}
+
 export default function BookingPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,6 +42,7 @@ export default function BookingPage() {
   const [phone, setPhone] = useState('');
   const [moveInDate, setMoveInDate] = useState('');
   const [moveOutDate, setMoveOutDate] = useState('');
+  const [stayPreset, setStayPreset] = useState('custom'); // custom | semester | year
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState({});
   const [statusMessage, setStatusMessage] = useState('');
@@ -134,6 +143,37 @@ export default function BookingPage() {
 
   const handleNextMonth = () => {
     setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
+  const handleClearDates = () => {
+    setMoveInDate('');
+    setMoveOutDate('');
+    setStayPreset('custom');
+    setErrors((prev) => ({
+      ...prev,
+      moveInDate: undefined,
+      moveOutDate: undefined,
+      dateRange: undefined,
+    }));
+  };
+
+  const handlePresetChange = (value) => {
+    setStayPreset(value);
+    if (!moveInDate) return;
+
+    if (value === 'semester') {
+      const out = addMonthsToISO(moveInDate, 6);
+      if (out) {
+        setMoveOutDate(out);
+        setErrors((prev) => ({ ...prev, moveOutDate: undefined, dateRange: undefined }));
+      }
+    } else if (value === 'year') {
+      const out = addMonthsToISO(moveInDate, 12);
+      if (out) {
+        setMoveOutDate(out);
+        setErrors((prev) => ({ ...prev, moveOutDate: undefined, dateRange: undefined }));
+      }
+    }
   };
 
   const validateForm = () => {
@@ -331,6 +371,22 @@ export default function BookingPage() {
             {errors.dateRange && (
               <p className="mt-2 text-xs text-red-400">{errors.dateRange}</p>
             )}
+
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-gray-200">Stay period</label>
+              <select
+                value={stayPreset}
+                onChange={(e) => handlePresetChange(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-[#232E45] bg-[#0B1628] px-3 py-2 text-sm text-gray-100 shadow-sm focus:border-[#3b4f86] focus:outline-none focus:ring-1 focus:ring-[#3b4f86]"
+              >
+                <option value="custom">Custom dates</option>
+                <option value="semester">Full Semester (6 months)</option>
+                <option value="year">Year (12 months)</option>
+              </select>
+              <p className="mt-1 text-[11px] text-gray-400">
+                Choose a preset after selecting a move-in date and we&apos;ll automatically set your move-out date.
+              </p>
+            </div>
           </div>
 
           <div className="bg-[#0B1628] rounded-2xl shadow-sm border border-[#232E45] p-6 space-y-4">
@@ -430,6 +486,13 @@ export default function BookingPage() {
                   <span className="inline-flex h-3 w-3 rounded-full bg-[#f97373] border border-[#f97373]" />
                   <span>Blocked / unavailable</span>
                 </div>
+                <button
+                  type="button"
+                  onClick={handleClearDates}
+                  className="ml-auto mt-1 inline-flex items-center justify-center rounded-full border border-gray-300 px-3 py-1 text-[11px] font-medium text-gray-600 hover:bg-gray-100"
+                >
+                  Clear selection
+                </button>
               </div>
             </div>
           </div>
