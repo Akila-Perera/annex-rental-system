@@ -12,6 +12,7 @@ import './App.css'
 import SearchAnnex from './pages/SearchAnnex';
 import AddAnnexPage from './pages/AddAnnexPage';
 import AnnexDetailsPage from './pages/AnnexDetailsPage';
+import BookingPage from './pages/BookingPage';
 
 // Import your review system pages
 import Properties from './pages/Properties';
@@ -36,6 +37,7 @@ function App() {
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/addAnnex" element={<AddAnnexPage />} />
           <Route path="/annex/:id" element={<AnnexDetailsPage />} />
+          <Route path="/booking" element={<BookingPage />} />
           
           {/* Your Review System Routes */}
           <Route path="/properties" element={<Properties />} />

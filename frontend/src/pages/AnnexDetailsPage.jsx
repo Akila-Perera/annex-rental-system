@@ -331,7 +331,21 @@ export default function AnnexDetailsPage() {
                   </div>
                 </div>
 
-                <button className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-3 rounded-xl transition text-sm mb-2">
+                <button
+                  className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-3 rounded-xl transition text-sm mb-2"
+                  onClick={() =>
+                    navigate('/booking', {
+                      state: {
+                        room: {
+                          annexId: annex._id,
+                          title: annex.title,
+                          imageUrl: displayImages[0],
+                          location: annex.selectedAddress || 'Near SLIIT Malabe Campus',
+                        },
+                      },
+                    })
+                  }
+                >
                   Book Now
                 </button>
                 <button className="w-full bg-transparent border border-[#1f3058] hover:border-blue-500 text-gray-300 hover:text-white font-semibold py-3 rounded-xl transition text-sm">
