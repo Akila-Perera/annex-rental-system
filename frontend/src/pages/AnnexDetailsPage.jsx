@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 
 const API_BASE = 'http://localhost:5000';
 
@@ -12,12 +14,19 @@ export default function AnnexDetailsPage() {
   const { state } = useLocation();
   const navigate = useNavigate();
 
+  const { user } = useAuth();
+
   const [annex, setAnnex] = useState(state?.annex || null);
   const [loading, setLoading] = useState(!state?.annex);
   const [error, setError] = useState('');
   const [activeImg, setActiveImg] = useState(0);
   const [roomType, setRoomType] = useState('Single Room');
   const [leasePeriod, setLeasePeriod] = useState('Full Semester (5 Months)');
+  const [showInquiryModal, setShowInquiryModal] = useState(false);
+  const [inquiryMessage, setInquiryMessage] = useState('');
+  const [inquirySending, setInquirySending] = useState(false);
+  const [inquiryError, setInquiryError] = useState('');
+  const [inquirySuccess, setInquirySuccess] = useState('');
 
   useEffect(() => {
     setError('');
@@ -70,6 +79,43 @@ export default function AnnexDetailsPage() {
     return 'Annex Owner';
   }, [annex]);
   const ownerInitial = ownerDisplayName.charAt(0).toUpperCase() || 'A';
+
+  const handleOpenInquiry = () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    setInquiryError('');
+    setInquirySuccess('');
+    setShowInquiryModal(true);
+  };
+
+  const handleSendInquiry = async () => {
+    if (!inquiryMessage.trim()) {
+      setInquiryError('Please enter a message to send to the owner.');
+      return;
+    }
+    setInquirySending(true);
+    setInquiryError('');
+    setInquirySuccess('');
+    try {
+      const res = await api.post('/inquiries', {
+        annexId: annex._id,
+        message: inquiryMessage,
+      });
+      if (res.data?.success) {
+        setInquirySuccess('Inquiry sent to the annex owner. They will reply to you soon.');
+        setInquiryMessage('');
+      } else {
+        setInquiryError(res.data?.message || 'Failed to send inquiry.');
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Server error while sending inquiry.';
+      setInquiryError(msg);
+    } finally {
+      setInquirySending(false);
+    }
+  };
 
   if (loading)
     return (
@@ -348,7 +394,11 @@ export default function AnnexDetailsPage() {
                 >
                   Book Now
                 </button>
-                <button className="w-full bg-transparent border border-[#1f3058] hover:border-blue-500 text-gray-300 hover:text-white font-semibold py-3 rounded-xl transition text-sm">
+                <button
+                  type="button"
+                  onClick={handleOpenInquiry}
+                  className="w-full bg-transparent border border-[#1f3058] hover:border-blue-500 text-gray-300 hover:text-white font-semibold py-3 rounded-xl transition text-sm"
+                >
                   Send Inquiry
                 </button>
                 <p className="text-xs text-gray-600 text-center mt-2">No credit card required to request inquiry</p>
@@ -395,7 +445,46 @@ export default function AnnexDetailsPage() {
               <div className="bg-[#0b1628] border border-[#1a2e50] rounded-2xl p-4 flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-lg font-bold shrink-0">{ownerInitial}</div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-widest">Managed by</p>
+                {showInquiryModal && (
+                  <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+                    <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-6 max-w-md w-full shadow-2xl">
+                      <h3 className="text-white text-lg font-semibold mb-2">Send Inquiry to Owner</h3>
+                      <p className="text-gray-400 text-xs mb-3">
+                        Ask a question about this annex, availability, rules, or anything else before you book.
+                      </p>
+                      <textarea
+                        rows={4}
+                        value={inquiryMessage}
+                        onChange={(e) => setInquiryMessage(e.target.value)}
+                        className="w-full bg-[#0d1526] border border-[#1f2a3c] text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500 mb-3"
+                        placeholder="Type your message here..."
+                      />
+                      {inquiryError && (
+                        <p className="text-xs text-red-400 mb-2">{inquiryError}</p>
+                      )}
+                      {inquirySuccess && (
+                        <p className="text-xs text-green-400 mb-2">{inquirySuccess}</p>
+                      )}
+                      <div className="flex gap-2 justify-end mt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowInquiryModal(false)}
+                          className="px-4 py-2 rounded-xl border border-[#1f2a3c] text-gray-300 hover:text-white text-sm"
+                        >
+                          Close
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSendInquiry}
+                          disabled={inquirySending}
+                          className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold disabled:opacity-60"
+                        >
+                          {inquirySending ? 'Sending...' : 'Send Message'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                   <p className="text-sm font-semibold text-gray-100">{ownerDisplayName}</p>
                   <p className="text-xs text-green-400 flex items-center gap-1 mt-0.5">
                     <span className="w-1.5 h-1.5 bg-green-400 rounded-full" /> Super Host
