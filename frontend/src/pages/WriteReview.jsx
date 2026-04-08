@@ -274,44 +274,26 @@ const WriteReview = () => {
               <span>✓</span> Booking automatically selected for <strong>{filteredBookings[0]?.property?.title}</strong>
               <input type="hidden" value={formData.bookingId} />
             </div>
-          ) : propertyId && filteredBookings.length === 0 ? (
-            // When coming from property card but NO bookings for this property
-            <div style={{ 
-              padding: '0.75rem', 
-              background: '#ffebee', 
-              borderRadius: '8px', 
-              color: '#c62828'
-            }}>
-              ❌ You don't have any completed bookings for this property. Complete a stay first to leave a review.
-            </div>
           ) : (
             // Normal dropdown (from Write Review button or multiple bookings)
-            <>
-              <select
-                value={formData.bookingId}
-                onChange={handleBookingSelect}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: `2px solid ${errors.bookingId ? '#ff6b6b' : '#e0e0e0'}`,
-                  borderRadius: '8px',
-                  fontSize: '1rem'
-                }}
-              >
-                <option value="">-- Choose a booking --</option>
-                {filteredBookings.map(booking => (
-                  <option key={booking._id} value={booking._id}>
-                    {booking.property?.title} - {new Date(booking.checkInDate).toLocaleDateString()}
-                  </option>
-                ))}
-              </select>
-              
-              {filteredBookings.length === 0 && !propertyId && (
-                <p style={{ color: '#999', fontSize: '0.85rem', marginTop: '0.5rem' }}>
-                  No completed bookings found. Complete a stay first to leave a review.
-                </p>
-              )}
-            </>
+            <select
+              value={formData.bookingId}
+              onChange={handleBookingSelect}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: `2px solid ${errors.bookingId ? '#ff6b6b' : '#e0e0e0'}`,
+                borderRadius: '8px',
+                fontSize: '1rem'
+              }}
+            >
+              <option value="">-- Choose a booking --</option>
+              {filteredBookings.map(booking => (
+                <option key={booking._id} value={booking._id}>
+                  {booking.property?.title} - {new Date(booking.checkInDate).toLocaleDateString()}
+                </option>
+              ))}
+            </select>
           )}
           
           {errors.bookingId && !(propertyId && filteredBookings.length === 1) && (
