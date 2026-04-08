@@ -1,12 +1,12 @@
-import express from 'express';
-import { 
+const express = require('express');
+const { 
   getPropertyQuality,
   getAllPropertiesQuality,
   getTopRated,
   calculatePropertyScore,
   recalculateAllScores
-} from '../controllers/qualityController.js';
-import { protect, admin } from '../middleware/authMiddleware.js';
+} = require('../controllers/qualityController.js');
+const { protect, admin } = require('../middleware/authMiddleware.js');
 
 const router = express.Router();
 
@@ -19,4 +19,4 @@ router.get('/top-rated', getTopRated);
 router.post('/calculate/:propertyId', protect, admin, calculatePropertyScore);
 router.post('/recalculate-all', protect, admin, recalculateAllScores);
 
-export default router;
+module.exports = router;

@@ -1,11 +1,11 @@
-import express from 'express';
-import { 
+const express = require('express');
+const { 
   createReview, 
   getPropertyReviews, 
   markHelpful, 
   reportReview 
-} from '../controllers/reviewController.js';
-import { protect, student } from '../middleware/authMiddleware.js';
+} = require('../controllers/reviewController.js');
+const { protect, student } = require('../middleware/authMiddleware.js');
 
 const router = express.Router();
 
@@ -17,4 +17,4 @@ router.post('/:reviewId/report', reportReview);
 // Protected routes (students only)
 router.post('/', protect, student, createReview);
 
-export default router;
+module.exports = router;
