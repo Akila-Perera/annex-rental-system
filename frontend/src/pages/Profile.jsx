@@ -322,8 +322,126 @@ export default function Profile() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-[#0a0f1e] px-4 py-12">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-[#0a0f1e]">
+      <div className="flex">
+
+        {/* Chat Sidebar */}
+        <aside className="fixed inset-y-0 left-0 w-[300px] bg-[#111827] border-r border-[#1f2a3c] shadow-2xl flex flex-col p-6">
+          <h2 className="text-white text-lg font-semibold mb-1">Chat</h2>
+          <p className="text-gray-400 text-xs mb-3">
+            {isLandlord
+              ? 'Messages from students about your annexes.'
+              : 'Messages between you and annex owners.'}
+          </p>
+
+          {isLandlord ? (
+            <>
+              {ownerInquiriesLoading && (
+                <p className="text-gray-400 text-sm">Loading messages...</p>
+              )}
+              {!ownerInquiriesLoading && ownerInquiries.length === 0 && (
+                <p className="text-gray-500 text-sm">No inquiries yet.</p>
+              )}
+              {!ownerInquiriesLoading && ownerInquiries.length > 0 && (
+                <div className="mt-1 flex-1 overflow-y-auto space-y-3 pr-1 flex flex-col">
+                  {ownerInquiries.map((inq) => {
+                    const lastMessage = inq.messages[inq.messages.length - 1];
+                    const senderLabel = lastMessage?.senderRole === 'landlord' ? 'You' : 'Student';
+                    return (
+                      <div
+                        key={inq._id}
+                        className="bg-[#0d1526] border border-[#1f2a3c] rounded-xl p-3 text-xs text-gray-200"
+                      >
+                        <p className="text-white font-semibold text-[11px] mb-1 truncate">
+                          {inq.annex?.title || 'Annex'}
+                        </p>
+                        <p className="text-gray-400 mb-0.5">
+                          From{' '}
+                          <span className="font-semibold">
+                            {inq.student?.firstName} {inq.student?.lastName}
+                          </span>
+                        </p>
+                        <p className="text-gray-400 mb-1">
+                          Latest from <span className="font-semibold">{senderLabel}</span>: {lastMessage?.text}
+                        </p>
+                        <div className="mt-1 flex gap-2">
+                          <input
+                            type="text"
+                            value={replyTextByInquiry[inq._id] || ''}
+                            onChange={(e) =>
+                              setReplyTextByInquiry((prev) => ({ ...prev, [inq._id]: e.target.value }))
+                            }
+                            placeholder="Reply to this inquiry..."
+                            className="flex-1 bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-2 py-1 text-[11px]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSendReply(inq._id)}
+                            className="px-3 py-1 rounded-lg bg-blue-600 text-white text-[11px] font-semibold"
+                          >
+                            Send
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {studentInquiriesLoading && (
+                <p className="text-gray-400 text-sm">Loading your messages...</p>
+              )}
+              {!studentInquiriesLoading && studentInquiries.length === 0 && (
+                <p className="text-gray-500 text-sm">You haven&apos;t sent any inquiries yet.</p>
+              )}
+              {!studentInquiriesLoading && studentInquiries.length > 0 && (
+                <div className="mt-1 flex-1 overflow-y-auto space-y-3 pr-1 flex flex-col">
+                  {studentInquiries.map((inq) => {
+                    const lastMessage = inq.messages[inq.messages.length - 1];
+                    const senderLabel = lastMessage?.senderRole === 'landlord' ? 'Owner' : 'You';
+                    return (
+                      <div
+                        key={inq._id}
+                        className="bg-[#0d1526] border border-[#1f2a3c] rounded-xl p-3 text-xs text-gray-200"
+                      >
+                        <p className="text-white font-semibold text-[11px] mb-1 truncate">
+                          {inq.annex?.title || 'Annex'}
+                        </p>
+                        <p className="text-gray-400 mb-1">
+                          Latest from <span className="font-semibold">{senderLabel}</span>: {lastMessage?.text}
+                        </p>
+                        <div className="mt-1 flex gap-2">
+                          <input
+                            type="text"
+                            value={replyTextByInquiry[inq._id] || ''}
+                            onChange={(e) =>
+                              setReplyTextByInquiry((prev) => ({ ...prev, [inq._id]: e.target.value }))
+                            }
+                            placeholder="Reply to this thread..."
+                            className="flex-1 bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-2 py-1 text-[11px]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSendReply(inq._id)}
+                            className="px-3 py-1 rounded-lg bg-blue-600 text-white text-[11px] font-semibold"
+                          >
+                            Send
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </aside>
+
+        {/* Main content shifted right of sidebar */}
+        <main className="flex-1 ml-[300px] px-4 py-12">
+          <div className="max-w-2xl mx-auto">
 
         {/* Profile Card */}
         <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-8 shadow-2xl mb-6">
@@ -645,54 +763,6 @@ export default function Profile() {
               )}
             </div>
 
-            {/* Landlord: Messages from Students */}
-            <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-6 shadow-2xl">
-              <h2 className="text-white text-lg font-semibold mb-2">Messages from Students</h2>
-              <p className="text-gray-400 text-xs mb-3">Respond to inquiries about your annexes.</p>
-              {ownerInquiriesLoading && <p className="text-gray-400 text-sm">Loading messages...</p>}
-              {!ownerInquiriesLoading && ownerInquiries.length === 0 && (
-                <p className="text-gray-500 text-sm">No inquiries yet.</p>
-              )}
-              {!ownerInquiriesLoading && ownerInquiries.length > 0 && (
-                <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                  {ownerInquiries.map((inq) => {
-                    const lastMessage = inq.messages[inq.messages.length - 1];
-                    const senderLabel = lastMessage?.senderRole === 'landlord' ? 'You' : 'Student';
-                    return (
-                      <div key={inq._id} className="bg-[#0d1526] border border-[#1f2a3c] rounded-xl p-3 text-sm">
-                        <p className="text-white font-semibold text-xs mb-1">
-                          {inq.annex?.title || 'Annex'}
-                        </p>
-                        <p className="text-gray-400 text-xs mb-1">
-                          From <span className="font-semibold">{inq.student?.firstName} {inq.student?.lastName}</span>
-                        </p>
-                        <p className="text-gray-400 text-xs mb-1">
-                          Latest from <span className="font-semibold">{senderLabel}</span>: {lastMessage?.text}
-                        </p>
-                        <div className="mt-2 flex gap-2">
-                          <input
-                            type="text"
-                            value={replyTextByInquiry[inq._id] || ''}
-                            onChange={(e) =>
-                              setReplyTextByInquiry((prev) => ({ ...prev, [inq._id]: e.target.value }))
-                            }
-                            placeholder="Reply to this inquiry..."
-                            className="flex-1 bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-2 py-1 text-xs"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleSendReply(inq._id)}
-                            className="px-3 py-1 rounded-lg bg-blue-600 text-white text-xs font-semibold"
-                          >
-                            Send
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
           </div>
         )}
 
@@ -707,47 +777,6 @@ export default function Profile() {
               </p>
             </div>
 
-            <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-6 shadow-2xl mb-6">
-              <h2 className="text-white text-lg font-semibold mb-2">Messages with Annex Owners</h2>
-              {studentInquiriesLoading && <p className="text-gray-400 text-sm">Loading your messages...</p>}
-              {!studentInquiriesLoading && studentInquiries.length === 0 && (
-                <p className="text-gray-500 text-sm">You haven&apos;t sent any inquiries yet.</p>
-              )}
-              {!studentInquiriesLoading && studentInquiries.length > 0 && (
-                <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                  {studentInquiries.map((inq) => {
-                    const lastMessage = inq.messages[inq.messages.length - 1];
-                    const senderLabel = lastMessage?.senderRole === 'landlord' ? 'Owner' : 'You';
-                    return (
-                      <div key={inq._id} className="bg-[#0d1526] border border-[#1f2a3c] rounded-xl p-3 text-sm">
-                        <p className="text-white font-semibold text-xs mb-1">{inq.annex?.title || 'Annex'}</p>
-                        <p className="text-gray-400 text-xs mb-1">
-                          Latest from <span className="font-semibold">{senderLabel}</span>: {lastMessage?.text}
-                        </p>
-                        <div className="mt-2 flex gap-2">
-                          <input
-                            type="text"
-                            value={replyTextByInquiry[inq._id] || ''}
-                            onChange={(e) =>
-                              setReplyTextByInquiry((prev) => ({ ...prev, [inq._id]: e.target.value }))
-                            }
-                            placeholder="Reply to this thread..."
-                            className="flex-1 bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-2 py-1 text-xs"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleSendReply(inq._id)}
-                            className="px-3 py-1 rounded-lg bg-blue-600 text-white text-xs font-semibold"
-                          >
-                            Send
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
           </>
         )}
 
@@ -756,6 +785,8 @@ export default function Profile() {
           className="w-full border border-red-500/30 text-red-400 hover:bg-red-500/10 rounded-xl py-3 text-sm font-medium transition-all">
           Log Out
         </button>
+      </div>
+        </main>
       </div>
 
       {/* Delete Confirmation Modal */}
