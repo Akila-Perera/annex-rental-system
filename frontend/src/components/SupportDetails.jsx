@@ -99,6 +99,13 @@ function SupportDetails() {
               className="px-6 py-2.5 bg-blue-500 text-white border-none rounded-[14px] font-semibold cursor-pointer text-[0.92rem] whitespace-nowrap hover:bg-blue-400 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-500/35 transition-all duration-300">
               + New Request
             </button>
+            
+            {/* ── MANAGE REVIEWS BUTTON ── */}
+            <button onClick={() => navigate('/admin')}
+              className="px-6 py-2.5 bg-purple-500 text-white border-none rounded-[14px] font-semibold cursor-pointer text-[0.92rem] whitespace-nowrap hover:bg-purple-400 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-purple-500/35 transition-all duration-300">
+              📝 Manage Reviews
+            </button>
+            
             {/* ── LOGOUT BUTTON ── */}
             <button onClick={handleLogout}
               className="px-6 py-2.5 bg-red-500/10 border border-red-500/30 text-red-400 rounded-[14px] font-semibold cursor-pointer text-[0.92rem] whitespace-nowrap hover:bg-red-600/85 hover:text-white hover:border-red-600/85 hover:-translate-y-0.5 transition-all duration-300">
@@ -183,7 +190,7 @@ function SupportDetails() {
         </p>
       </div>
 
-      {/* Edit Modal - unchanged from your original */}
+      {/* Edit Modal */}
       {editItem && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[1000] flex items-center justify-center p-5" onClick={closeEdit}>
           <div className="bg-[#1a2030] border border-white/7 rounded-[20px] px-9 py-10 w-full max-w-[580px] shadow-[0_20px_60px_rgba(0,0,0,0.5),0_0_0_1px_rgba(45,126,247,0.1)] relative max-h-[90vh] overflow-y-auto"

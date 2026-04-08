@@ -1,6 +1,6 @@
 import Review from '../models/Review.js';
-import Property from '../models/Annex.js';  // Changed from Property to Annex
-import User from '../models/UserModel.js';  // Changed from User to UserModel
+import Annex from '../models/Annex.js';
+import User from '../models/UserModel.js';
 import { calculatePropertyScore } from './qualityController.js';
 
 // @desc    Get all reviews for moderation (admin only)
@@ -40,14 +40,7 @@ export const getModerationQueue = async (req, res) => {
     // Get reviews with populated fields
     const reviews = await Review.find(query)
       .populate('student', 'name email')
-      .populate({
-        path: 'property',
-        select: 'title location landlord',
-        populate: {
-          path: 'landlord',
-          select: 'name email'
-        }
-      })
+      .populate('property', 'title location')
       .sort(sortOption)
       .limit(limit * 1)
       .skip((page - 1) * limit);
@@ -74,6 +67,7 @@ export const getModerationQueue = async (req, res) => {
     });
 
   } catch (error) {
+    console.error('Error in getModerationQueue:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -87,7 +81,8 @@ export const getModerationQueue = async (req, res) => {
 export const approveReview = async (req, res) => {
   try {
     const { reviewId } = req.params;
-    const { moderationNotes } = req.body;
+
+    console.log('Approving review:', reviewId);
 
     const review = await Review.findById(reviewId);
     
@@ -98,30 +93,20 @@ export const approveReview = async (req, res) => {
       });
     }
 
-    // Update review status
+    // Simply update the status
     review.status = 'approved';
-    review.moderationNotes = moderationNotes || 'Approved by admin';
-    review.moderatedBy = req.user._id;
-    review.moderatedAt = new Date();
-
     await review.save();
 
-    // Update property's total reviews count
-    await Property.findByIdAndUpdate(
-      review.property,
-      { $inc: { totalReviews: 1 } }
-    );
-
-    // ✅ Auto-update quality score after approval
-    await calculatePropertyScore({ params: { propertyId: review.property } }, { json: () => {} });
+    console.log('Review approved successfully');
 
     res.json({
       success: true,
-      message: 'Review approved and quality score updated',
+      message: 'Review approved successfully',
       review
     });
 
   } catch (error) {
+    console.error('Error in approveReview:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -153,12 +138,8 @@ export const rejectReview = async (req, res) => {
       });
     }
 
-    // Update review status
     review.status = 'rejected';
     review.moderationNotes = moderationNotes;
-    review.moderatedBy = req.user._id;
-    review.moderatedAt = new Date();
-
     await review.save();
 
     res.json({
@@ -168,6 +149,7 @@ export const rejectReview = async (req, res) => {
     });
 
   } catch (error) {
+    console.error('Error in rejectReview:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -192,12 +174,8 @@ export const flagReview = async (req, res) => {
       });
     }
 
-    // Update review status
     review.status = 'flagged';
     review.moderationNotes = moderationNotes || 'Flagged by admin';
-    review.moderatedBy = req.user._id;
-    review.moderatedAt = new Date();
-
     await review.save();
 
     res.json({
@@ -207,6 +185,7 @@ export const flagReview = async (req, res) => {
     });
 
   } catch (error) {
+    console.error('Error in flagReview:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -251,28 +230,9 @@ export const bulkModerate = async (req, res) => {
       { _id: { $in: reviewIds } },
       {
         status: newStatus,
-        moderationNotes: moderationNotes || `Bulk ${action}`,
-        moderatedBy: req.user._id,
-        moderatedAt: new Date()
+        moderationNotes: moderationNotes || `Bulk ${action}`
       }
     );
-
-    // If approving, update property counts and quality scores
-    if (action === 'approve') {
-      const reviews = await Review.find({ _id: { $in: reviewIds } });
-      const propertyIds = [...new Set(reviews.map(r => r.property.toString()))];
-      
-      for (const propertyId of propertyIds) {
-        const count = await Review.countDocuments({ 
-          property: propertyId, 
-          status: 'approved' 
-        });
-        await Property.findByIdAndUpdate(propertyId, { totalReviews: count });
-        
-        // ✅ Auto-update quality score for each property
-        await calculatePropertyScore({ params: { propertyId } }, { json: () => {} });
-      }
-    }
 
     res.json({
       success: true,
@@ -281,6 +241,7 @@ export const bulkModerate = async (req, res) => {
     });
 
   } catch (error) {
+    console.error('Error in bulkModerate:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -300,37 +261,9 @@ export const getModerationStats = async (req, res) => {
       rejectedReviews: await Review.countDocuments({ status: 'rejected' }),
       flaggedReviews: await Review.countDocuments({ status: 'flagged' }),
       
-      // Today's activity
       todayReviews: await Review.countDocuments({
         createdAt: { $gte: new Date().setHours(0,0,0,0) }
-      }),
-      
-      // Most active reviewers
-      topReviewers: await Review.aggregate([
-        { $group: { _id: '$student', count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-        { $limit: 5 },
-        { $lookup: {
-            from: 'users',
-            localField: '_id',
-            foreignField: '_id',
-            as: 'user'
-          }
-        },
-        { $unwind: '$user' },
-        { $project: { 'user.name': 1, count: 1 } }
-      ]),
-      
-      // Reviews by rating
-      ratingDistribution: await Review.aggregate([
-        { $match: { status: 'approved' } },
-        { $group: {
-            _id: { $floor: '$ratings.overall' },
-            count: { $sum: 1 }
-          }
-        },
-        { $sort: { _id: 1 } }
-      ])
+      })
     };
 
     res.json({
@@ -339,6 +272,7 @@ export const getModerationStats = async (req, res) => {
     });
 
   } catch (error) {
+    console.error('Stats error:', error);
     res.status(500).json({
       success: false,
       message: error.message

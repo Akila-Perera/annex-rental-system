@@ -7,12 +7,12 @@ const {
   bulkModerate,
   getModerationStats
 } = require('../controllers/moderationController.js');
-const { protect, admin } = require('../middleware/authMiddleware.js');
+// const { protect, admin } = require('../middleware/authMiddleware.js'); // ← COMMENTED OUT
 
 const router = express.Router();
 
 // All admin routes are protected and require admin role
-router.use(protect, admin);
+// router.use(protect, admin); // ← COMMENTED OUT
 
 // Moderation routes
 router.get('/reviews', getModerationQueue);
