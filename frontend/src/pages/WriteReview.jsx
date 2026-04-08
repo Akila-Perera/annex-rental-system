@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
 
@@ -35,8 +35,6 @@ const WriteReview = () => {
   const navigate = useNavigate();
   
   const [formData, setFormData] = useState({
-    bookingId: '',
-    propertyId: propertyId || '',
     ratings: {
       overall: 0,
       cleanliness: 0,
@@ -51,60 +49,14 @@ const WriteReview = () => {
     cons: ['']
   });
 
-  const [allBookings, setAllBookings] = useState([]);
-  const [filteredBookings, setFilteredBookings] = useState([]);
-  const [selectedProperty, setSelectedProperty] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-
-  // Fetch user's completed bookings
-  useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        const response = await api.get('/bookings/completed');
-        const bookings = response.data.bookings || [];
-        setAllBookings(bookings);
-        
-        console.log('All bookings:', bookings);
-        console.log('Property ID from URL:', propertyId);
-        
-        // Filter bookings for the specific property if propertyId exists
-        if (propertyId) {
-          const filtered = bookings.filter(
-            booking => booking.property?._id === propertyId
-          );
-          setFilteredBookings(filtered);
-          console.log('Filtered bookings for property:', filtered);
-          
-          // Get property details from first filtered booking
-          if (filtered.length > 0) {
-            setSelectedProperty(filtered[0].property);
-          }
-          
-          // Auto-select if only one booking
-          if (filtered.length === 1) {
-            setFormData(prev => ({
-              ...prev,
-              bookingId: filtered[0]._id,
-              propertyId: propertyId
-            }));
-          }
-        } else {
-          // No propertyId - show all bookings
-          setFilteredBookings(bookings);
-        }
-      } catch (error) {
-        console.error('Error fetching bookings:', error);
-      }
-    };
-    fetchBookings();
-  }, [propertyId]);
 
   const validate = () => {
     const newErrors = {};
 
-    if (!formData.bookingId) {
-      newErrors.bookingId = 'Please select a completed booking';
+    if (!propertyId) {
+      newErrors.propertyId = 'Property ID is required';
     }
 
     if (formData.ratings.overall === 0) {
@@ -165,19 +117,6 @@ const WriteReview = () => {
     }
   };
 
-  const handleBookingSelect = (e) => {
-    const bookingId = e.target.value;
-    const selectedBooking = filteredBookings.find(b => b._id === bookingId);
-    setFormData({
-      ...formData,
-      bookingId,
-      propertyId: selectedBooking?.property?._id || ''
-    });
-    if (errors.bookingId) {
-      setErrors({ ...errors, bookingId: '' });
-    }
-  };
-
   const handleProsConsChange = (type, index, value) => {
     const newArray = [...formData[type]];
     newArray[index] = value;
@@ -221,7 +160,7 @@ const WriteReview = () => {
       const cons = formData.cons.filter(c => c.trim() !== '');
       
       const reviewData = {
-        bookingId: formData.bookingId,
+        propertyId: propertyId,  // Send propertyId from URL
         ratings: formData.ratings,
         title: formData.title,
         comment: formData.comment,
@@ -235,7 +174,7 @@ const WriteReview = () => {
       
       if (response.data.success) {
         alert('✅ Review submitted successfully! It will be reviewed by admin.');
-        navigate(`/property/${formData.propertyId}`);
+        navigate(`/property/${propertyId}`);
       } else {
         alert('❌ Failed to submit review: ' + response.data.message);
       }
@@ -250,59 +189,10 @@ const WriteReview = () => {
   return (
     <div style={{ maxWidth: '800px', margin: '2rem auto', padding: '2rem' }}>
       <h1 style={{ color: '#333', marginBottom: '2rem' }}>
-        {propertyId && selectedProperty 
-          ? `Write a Review for ${selectedProperty.title}` 
-          : 'Write a Review'}
+        Write a Review
       </h1>
       
       <form onSubmit={handleSubmit}>
-        {/* Booking Selection */}
-        <div style={{ marginBottom: '2rem', background: '#f8f9fa', padding: '1.5rem', borderRadius: '8px' }}>
-          <h3 style={{ marginBottom: '1rem', color: '#555' }}>Select Your Completed Booking</h3>
-          
-          {propertyId && filteredBookings.length === 1 ? (
-            // When coming from property card with exactly 1 booking - auto selected
-            <div style={{ 
-              padding: '0.75rem', 
-              background: '#e8f5e9', 
-              borderRadius: '8px', 
-              color: '#2e7d32',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}>
-              <span>✓</span> Booking automatically selected for <strong>{filteredBookings[0]?.property?.title}</strong>
-              <input type="hidden" value={formData.bookingId} />
-            </div>
-          ) : (
-            // Normal dropdown (from Write Review button or multiple bookings)
-            <select
-              value={formData.bookingId}
-              onChange={handleBookingSelect}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: `2px solid ${errors.bookingId ? '#ff6b6b' : '#e0e0e0'}`,
-                borderRadius: '8px',
-                fontSize: '1rem'
-              }}
-            >
-              <option value="">-- Choose a booking --</option>
-              {filteredBookings.map(booking => (
-                <option key={booking._id} value={booking._id}>
-                  {booking.property?.title} - {new Date(booking.checkInDate).toLocaleDateString()}
-                </option>
-              ))}
-            </select>
-          )}
-          
-          {errors.bookingId && !(propertyId && filteredBookings.length === 1) && (
-            <p style={{ color: '#ff6b6b', fontSize: '0.85rem', marginTop: '0.5rem' }}>
-              {errors.bookingId}
-            </p>
-          )}
-        </div>
-
         {/* Ratings Section */}
         <div style={{ marginBottom: '2rem' }}>
           <h3 style={{ marginBottom: '1rem', color: '#555' }}>Rate Your Stay</h3>

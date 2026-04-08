@@ -123,7 +123,7 @@ export const getPropertyReviews = async (req, res) => {
       property: propertyId, 
       status: 'approved' 
     })
-    .populate('student', 'name profilePicture')
+    .populate('student', 'firstName lastName name email profilePicture')
     .sort(sortOption)
     .limit(limit * 1)
     .skip((page - 1) * limit);

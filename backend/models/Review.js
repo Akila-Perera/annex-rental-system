@@ -8,14 +8,15 @@ const reviewSchema = new mongoose.Schema({
   },
   property: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Property',
+    ref: 'Annex',  // ✅ CHANGED from 'Property' to 'Annex'
     required: true
   },
   booking: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Booking',
-    required: true,
-    unique: true // One review per booking
+    required: false,
+    unique: true,
+    sparse: true
   },
   ratings: {
     overall: { type: Number, required: true, min: 1, max: 5 },

@@ -402,20 +402,27 @@ export default function AnnexDetailsPage() {
   };
 
   // Fetch quality and reviews data
-  const fetchPropertyData = async () => {
-    if (!annex?._id) return;
-    try {
-      const qualityRes = await api.get(`/quality/property/${annex._id}`);
-      if (qualityRes.data.qualityScore) {
-        setQuality(qualityRes.data.qualityScore);
-      }
-      
-      const reviewsRes = await api.get(`/reviews/property/${annex._id}`);
-      setReviews(reviewsRes.data.reviews || []);
-    } catch (error) {
-      console.error('Error fetching property data:', error);
+const fetchPropertyData = async () => {
+  if (!annex?._id) return;
+  
+  // Fetch reviews first (this will work)
+  try {
+    const reviewsRes = await api.get(`/reviews/property/${annex._id}`);
+    setReviews(reviewsRes.data.reviews || []);
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+  }
+  
+  // Try quality separately (don't let it fail)
+  try {
+    const qualityRes = await api.get(`/quality/property/${annex._id}`);
+    if (qualityRes.data.qualityScore) {
+      setQuality(qualityRes.data.qualityScore);
     }
-  };
+  } catch (qualityError) {
+    console.log('Quality API not available');
+  }
+};
 
   // Calculate rating percentages from actual reviews
   const getRatingPercentages = () => {

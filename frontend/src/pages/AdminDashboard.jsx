@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';  // ← ADD THIS
 import api from '../services/api';
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();  // ← ADD THIS
   const [activeTab, setActiveTab] = useState('pending');
   const [reviews, setReviews] = useState({
     pending: [],
@@ -18,6 +20,14 @@ const AdminDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // ✅ ADD THIS ADMIN AUTHENTICATION CHECK
+  useEffect(() => {
+    const isAdmin = localStorage.getItem('uninest_admin');
+    if (!isAdmin || isAdmin !== 'true') {
+      navigate('/login');
+    }
+  }, [navigate]);
 
   // Fetch moderation queue
   const fetchModerationQueue = useCallback(async () => {
@@ -84,7 +94,7 @@ const AdminDashboard = () => {
       
       if (response.data.success) {
         alert('✅ Review approved successfully!');
-        fetchAllData(); // Refresh data
+        fetchAllData();
       }
     } catch (err) {
       alert('❌ Failed to approve review');
@@ -104,7 +114,7 @@ const AdminDashboard = () => {
       
       if (response.data.success) {
         alert('✅ Review rejected successfully!');
-        fetchAllData(); // Refresh data
+        fetchAllData();
       }
     } catch (err) {
       alert('❌ Failed to reject review');
@@ -124,7 +134,7 @@ const AdminDashboard = () => {
       
       if (response.data.success) {
         alert('🚩 Review flagged successfully!');
-        fetchAllData(); // Refresh data
+        fetchAllData();
       }
     } catch (err) {
       alert('❌ Failed to flag review');
@@ -133,7 +143,7 @@ const AdminDashboard = () => {
   };
 
   const renderStars = (rating) => {
-    return '★'.repeat(rating) + '☆'.repeat(5-rating);
+    return '★'.repeat(rating) + '☆'.repeat(5 - rating);
   };
 
   const formatDate = (dateString) => {
