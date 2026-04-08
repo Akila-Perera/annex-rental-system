@@ -1,5 +1,5 @@
 import Review from '../models/Review.js';
-import Property from '../models/Property.js';
+import Property from '../models/Annex.js';  // Changed from Property to Annex
 import QualityScore from '../models/QualityScore.js';
 import mongoose from 'mongoose';
 
@@ -86,7 +86,7 @@ export const getPropertyQuality = async (req, res) => {
     const { propertyId } = req.params;
 
     let qualityScore = await QualityScore.findOne({ property: propertyId })
-      .populate('property', 'title location price images');
+      .populate('property', 'title price location');
 
     if (!qualityScore) {
       const mockReq = { params: { propertyId } };
@@ -111,7 +111,7 @@ export const getPropertyQuality = async (req, res) => {
 // @access  Public
 export const getAllPropertiesQuality = async (req, res) => {
   try {
-    const allProperties = await Property.find({}).populate('landlord', 'name email');
+    const allProperties = await Property.find({});
     const qualityScores = await QualityScore.find({});
     
     const qualityMap = {};
@@ -144,7 +144,7 @@ export const getTopRated = async (req, res) => {
     const topRated = await QualityScore.find({ totalReviews: { $gt: 0 } })
       .sort({ overallScore: -1 })
       .limit(Number(limit))
-      .populate('property', 'title location price images');
+      .populate('property', 'title price location');
     res.json({ success: true, topRated });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

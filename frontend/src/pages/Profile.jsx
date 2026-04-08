@@ -21,6 +21,18 @@ export default function Profile() {
     description: '',
     preferredGender: 'Any',
   });
+  const [ownerBookings, setOwnerBookings] = useState([]);
+  const [ownerStats, setOwnerStats] = useState({
+    totalAnnexes: 0,
+    totalBookings: 0,
+    upcomingBookings: 0,
+  });
+  const [ownerBookingsLoading, setOwnerBookingsLoading] = useState(false);
+  const [studentInquiries, setStudentInquiries] = useState([]);
+  const [studentInquiriesLoading, setStudentInquiriesLoading] = useState(false);
+  const [ownerInquiries, setOwnerInquiries] = useState([]);
+  const [ownerInquiriesLoading, setOwnerInquiriesLoading] = useState(false);
+  const [replyTextByInquiry, setReplyTextByInquiry] = useState({});
 
   useEffect(() => {
     if (!user) {
@@ -47,8 +59,80 @@ export default function Profile() {
   };
 
   useEffect(() => {
-    fetchOwnerAnnexes();
-  }, [isLandlord, user?.id]);
+    if (!user || !token) return;
+    if (isLandlord && user?.id) {
+      fetchOwnerAnnexes();
+      fetchOwnerBookings();
+      fetchOwnerInquiries();
+    } else {
+      fetchStudentInquiries();
+    }
+  }, [isLandlord, user?.id, token]);
+
+  const fetchOwnerBookings = async () => {
+    if (!isLandlord || !token) return;
+    setOwnerBookingsLoading(true);
+    try {
+      const res = await fetch('http://localhost:5000/api/bookings/owner/dashboard', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setOwnerBookings(data.bookings || []);
+        setOwnerStats(data.stats || {
+          totalAnnexes: 0,
+          totalBookings: 0,
+          upcomingBookings: 0,
+        });
+      } else {
+        console.error('Error fetching owner bookings:', data.message || 'Unknown error');
+      }
+    } catch (fetchError) {
+      console.error('Error fetching owner bookings:', fetchError);
+    } finally {
+      setOwnerBookingsLoading(false);
+    }
+  };
+
+  const fetchStudentInquiries = async () => {
+    setStudentInquiriesLoading(true);
+    try {
+      const res = await fetch('http://localhost:5000/api/inquiries/student', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setStudentInquiries(data.inquiries || []);
+      }
+    } catch (err) {
+      console.error('Error fetching student inquiries:', err);
+    } finally {
+      setStudentInquiriesLoading(false);
+    }
+  };
+
+  const fetchOwnerInquiries = async () => {
+    setOwnerInquiriesLoading(true);
+    try {
+      const res = await fetch('http://localhost:5000/api/inquiries/owner', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setOwnerInquiries(data.inquiries || []);
+      }
+    } catch (err) {
+      console.error('Error fetching owner inquiries:', err);
+    } finally {
+      setOwnerInquiriesLoading(false);
+    }
+  };
 
   const startEdit = () => {
     setEditData({
@@ -199,11 +283,165 @@ export default function Profile() {
     }
   };
 
+  const handleSendReply = async (inquiryId) => {
+    const text = replyTextByInquiry[inquiryId]?.trim();
+    if (!text) return;
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/inquiries/${inquiryId}/reply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ message: text }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setReplyTextByInquiry((prev) => ({ ...prev, [inquiryId]: '' }));
+        if (isLandlord) {
+          fetchOwnerInquiries();
+        } else {
+          fetchStudentInquiries();
+        }
+      }
+    } catch (err) {
+      console.error('Error sending inquiry reply:', err);
+    }
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '—';
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleDateString();
+  };
+
+  const latestBooking = ownerBookings && ownerBookings.length > 0 ? ownerBookings[0] : null;
+
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-[#0a0f1e] px-4 py-12">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-[#0a0f1e]">
+      <div className="flex">
+
+        {/* Chat Sidebar */}
+        <aside className="fixed inset-y-0 left-0 w-[300px] bg-[#111827] border-r border-[#1f2a3c] shadow-2xl flex flex-col p-6">
+          <h2 className="text-white text-lg font-semibold mb-1">Chat</h2>
+          <p className="text-gray-400 text-xs mb-3">
+            {isLandlord
+              ? 'Messages from students about your annexes.'
+              : 'Messages between you and annex owners.'}
+          </p>
+
+          {isLandlord ? (
+            <>
+              {ownerInquiriesLoading && (
+                <p className="text-gray-400 text-sm">Loading messages...</p>
+              )}
+              {!ownerInquiriesLoading && ownerInquiries.length === 0 && (
+                <p className="text-gray-500 text-sm">No inquiries yet.</p>
+              )}
+              {!ownerInquiriesLoading && ownerInquiries.length > 0 && (
+                <div className="mt-1 flex-1 overflow-y-auto space-y-3 pr-1 flex flex-col">
+                  {ownerInquiries.map((inq) => {
+                    const lastMessage = inq.messages[inq.messages.length - 1];
+                    const senderLabel = lastMessage?.senderRole === 'landlord' ? 'You' : 'Student';
+                    return (
+                      <div
+                        key={inq._id}
+                        className="bg-[#0d1526] border border-[#1f2a3c] rounded-xl p-3 text-xs text-gray-200"
+                      >
+                        <p className="text-white font-semibold text-[11px] mb-1 truncate">
+                          {inq.annex?.title || 'Annex'}
+                        </p>
+                        <p className="text-gray-400 mb-0.5">
+                          From{' '}
+                          <span className="font-semibold">
+                            {inq.student?.firstName} {inq.student?.lastName}
+                          </span>
+                        </p>
+                        <p className="text-gray-400 mb-1">
+                          Latest from <span className="font-semibold">{senderLabel}</span>: {lastMessage?.text}
+                        </p>
+                        <div className="mt-1 flex gap-2">
+                          <input
+                            type="text"
+                            value={replyTextByInquiry[inq._id] || ''}
+                            onChange={(e) =>
+                              setReplyTextByInquiry((prev) => ({ ...prev, [inq._id]: e.target.value }))
+                            }
+                            placeholder="Reply to this inquiry..."
+                            className="flex-1 bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-2 py-1 text-[11px]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSendReply(inq._id)}
+                            className="px-3 py-1 rounded-lg bg-blue-600 text-white text-[11px] font-semibold"
+                          >
+                            Send
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {studentInquiriesLoading && (
+                <p className="text-gray-400 text-sm">Loading your messages...</p>
+              )}
+              {!studentInquiriesLoading && studentInquiries.length === 0 && (
+                <p className="text-gray-500 text-sm">You haven&apos;t sent any inquiries yet.</p>
+              )}
+              {!studentInquiriesLoading && studentInquiries.length > 0 && (
+                <div className="mt-1 flex-1 overflow-y-auto space-y-3 pr-1 flex flex-col">
+                  {studentInquiries.map((inq) => {
+                    const lastMessage = inq.messages[inq.messages.length - 1];
+                    const senderLabel = lastMessage?.senderRole === 'landlord' ? 'Owner' : 'You';
+                    return (
+                      <div
+                        key={inq._id}
+                        className="bg-[#0d1526] border border-[#1f2a3c] rounded-xl p-3 text-xs text-gray-200"
+                      >
+                        <p className="text-white font-semibold text-[11px] mb-1 truncate">
+                          {inq.annex?.title || 'Annex'}
+                        </p>
+                        <p className="text-gray-400 mb-1">
+                          Latest from <span className="font-semibold">{senderLabel}</span>: {lastMessage?.text}
+                        </p>
+                        <div className="mt-1 flex gap-2">
+                          <input
+                            type="text"
+                            value={replyTextByInquiry[inq._id] || ''}
+                            onChange={(e) =>
+                              setReplyTextByInquiry((prev) => ({ ...prev, [inq._id]: e.target.value }))
+                            }
+                            placeholder="Reply to this thread..."
+                            className="flex-1 bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-2 py-1 text-[11px]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSendReply(inq._id)}
+                            className="px-3 py-1 rounded-lg bg-blue-600 text-white text-[11px] font-semibold"
+                          >
+                            Send
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </aside>
+
+        {/* Main content shifted right of sidebar */}
+        <main className="flex-1 ml-[300px] px-4 py-12">
+          <div className="max-w-2xl mx-auto">
 
         {/* Profile Card */}
         <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-8 shadow-2xl mb-6">
@@ -330,18 +568,110 @@ export default function Profile() {
           )}
         </div>
 
-        {/* Landlord: Add Annex */}
+        {/* Landlord Dashboard */}
         {isLandlord && (
-          <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-6 shadow-2xl mb-6">
-            <h2 className="text-white text-lg font-semibold mb-2">Manage Your Listings</h2>
-            <p className="text-gray-400 text-sm mb-5">Add your annex or boarding house so students can find and book it.</p>
-            <Link to="/addAnnex"
-              className="inline-block px-5 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl text-sm font-medium transition-all">
-              ➕ Add New Annex
-            </Link>
+          <div className="space-y-6 mb-6">
+            {/* Top row: Highlight booking + stats */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Highlight latest booking */}
+              <div className="lg:col-span-2 bg-gradient-to-br from-[#111827] via-[#111827] to-[#1e293b] border border-[#1f2a3c] rounded-2xl p-6 shadow-2xl">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-white text-lg font-semibold">Confirmed Booking</h2>
+                    <p className="text-gray-400 text-xs mt-1">Latest student booking across your annexes.</p>
+                  </div>
+                </div>
 
-            <div className="mt-6">
-              <h3 className="text-white text-sm font-semibold mb-3">Your Added Annexes</h3>
+                {ownerBookingsLoading && (
+                  <p className="text-gray-400 text-sm">Loading bookings...</p>
+                )}
+
+                {!ownerBookingsLoading && latestBooking && (
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Student</p>
+                      <p className="text-white font-medium text-sm">
+                        {latestBooking.student?.firstName} {latestBooking.student?.lastName}
+                      </p>
+                      <p className="text-gray-400 text-xs mt-0.5">{latestBooking.student?.email}</p>
+                      {latestBooking.student?.phone && (
+                        <p className="text-gray-400 text-xs">{latestBooking.student.phone}</p>
+                      )}
+                    </div>
+
+                    <div className="hidden sm:block h-12 w-px bg-[#1f2a3c]" />
+
+                    <div className="flex-1 flex flex-col sm:items-center">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Annex</p>
+                      <p className="text-white text-sm font-medium text-center">
+                        {latestBooking.annex?.title || 'Annex'}
+                      </p>
+                      {latestBooking.annex?.selectedAddress && (
+                        <p className="text-gray-400 text-xs text-center mt-0.5">
+                          {latestBooking.annex.selectedAddress}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="hidden sm:block h-12 w-px bg-[#1f2a3c]" />
+
+                    <div className="text-right space-y-1">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Period</p>
+                      <p className="text-white text-sm font-medium">
+                        {formatDate(latestBooking.checkInDate)}
+                        <span className="text-gray-400 mx-1 text-xs">to</span>
+                        {formatDate(latestBooking.checkOutDate)}
+                      </p>
+                      <p className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-500/15 border border-green-500/40 text-green-300 text-xs font-semibold mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                        {latestBooking.status?.charAt(0).toUpperCase() + latestBooking.status?.slice(1) || 'Confirmed'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {!ownerBookingsLoading && !latestBooking && (
+                  <div className="border border-dashed border-[#1f2a3c] rounded-xl p-4 text-center">
+                    <p className="text-gray-300 text-sm font-medium mb-1">No bookings yet</p>
+                    <p className="text-gray-500 text-xs">
+                      Once students start booking your annexes, you&apos;ll see the latest one highlighted here.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Stats column */}
+              <div className="space-y-4">
+                <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-4">
+                  <p className="text-gray-400 text-xs mb-1">Total Annexes</p>
+                  <p className="text-white text-2xl font-bold">{ownerStats.totalAnnexes}</p>
+                </div>
+                <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-4">
+                  <p className="text-gray-400 text-xs mb-1">All-time Bookings</p>
+                  <p className="text-white text-2xl font-bold">{ownerStats.totalBookings}</p>
+                </div>
+                <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-4">
+                  <p className="text-gray-400 text-xs mb-1">Upcoming / Active</p>
+                  <p className="text-white text-2xl font-bold">{ownerStats.upcomingBookings}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Manage Listings */}
+            <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-6 shadow-2xl">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <div>
+                  <h2 className="text-white text-lg font-semibold">Your Annex Portfolio</h2>
+                  <p className="text-gray-400 text-xs mt-1">Edit details, update pricing, or remove listings.</p>
+                </div>
+                <Link
+                  to="/addAnnex"
+                  className="inline-flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-xl text-sm font-medium transition-all"
+                >
+                  ➕ Add New Annex
+                </Link>
+              </div>
+
               {annexLoading && (
                 <p className="text-gray-400 text-sm">Loading your annexes...</p>
               )}
@@ -353,9 +683,12 @@ export default function Profile() {
               {!annexLoading && ownerAnnexes.length > 0 && (
                 <div className="space-y-3">
                   {ownerAnnexes.map((annex) => (
-                    <div key={annex._id} className="bg-[#0d1526] border border-[#1f2a3c] rounded-xl p-4">
+                    <div
+                      key={annex._id}
+                      className="bg-[#0d1526] border border-[#1f2a3c] rounded-xl p-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
+                    >
                       {editingAnnexId === annex._id ? (
-                        <div className="space-y-3">
+                        <div className="flex-1 space-y-3">
                           <input
                             type="text"
                             value={annexEditData.title}
@@ -401,12 +734,14 @@ export default function Profile() {
                         </div>
                       ) : (
                         <>
-                          <p className="text-white font-semibold">{annex.title}</p>
-                          <p className="text-blue-400 text-sm mt-1">Rs. {annex.price} / month</p>
-                          {annex.selectedAddress && (
-                            <p className="text-gray-400 text-xs mt-1">{annex.selectedAddress}</p>
-                          )}
-                          <div className="flex gap-2 mt-3">
+                          <div className="flex-1">
+                            <p className="text-white font-semibold">{annex.title}</p>
+                            <p className="text-blue-400 text-sm mt-1">Rs. {annex.price} / month</p>
+                            {annex.selectedAddress && (
+                              <p className="text-gray-400 text-xs mt-1">{annex.selectedAddress}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
                             <button
                               onClick={() => startAnnexEdit(annex)}
                               className="px-3 py-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-300 text-xs font-semibold"
@@ -427,18 +762,22 @@ export default function Profile() {
                 </div>
               )}
             </div>
+
           </div>
         )}
 
-        {/* Student: Quick Info */}
+        {/* Student: Quick Info + Messages */}
         {!isLandlord && (
-          <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-6 shadow-2xl mb-6">
-            <h2 className="text-white text-lg font-semibold mb-2">Your Housing Search</h2>
-            <p className="text-gray-400 text-sm">
-              Browse verified annexes near your university from the{' '}
-              <span onClick={() => navigate('/')} className="text-blue-400 cursor-pointer hover:underline">Home page</span>.
-            </p>
-          </div>
+          <>
+            <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-6 shadow-2xl mb-6">
+              <h2 className="text-white text-lg font-semibold mb-2">Your Housing Search</h2>
+              <p className="text-gray-400 text-sm">
+                Browse verified annexes near your university from the{' '}
+                <span onClick={() => navigate('/')} className="text-blue-400 cursor-pointer hover:underline">Home page</span>.
+              </p>
+            </div>
+
+          </>
         )}
 
         {/* Log Out */}
@@ -446,6 +785,8 @@ export default function Profile() {
           className="w-full border border-red-500/30 text-red-400 hover:bg-red-500/10 rounded-xl py-3 text-sm font-medium transition-all">
           Log Out
         </button>
+      </div>
+        </main>
       </div>
 
       {/* Delete Confirmation Modal */}

@@ -11,7 +11,8 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    // Use the same key as AuthContext (uninest_token)
+    const token = localStorage.getItem('uninest_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
