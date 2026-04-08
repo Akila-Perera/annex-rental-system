@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Map, { Marker } from 'react-map-gl/mapbox';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import axios from 'axios';
+
+const API_BASE = 'http://localhost:5000';
+const sliitLocation = { lat: 6.9147, lng: 79.9723 };
 
 const Home = () => {
   const [scrolled, setScrolled] = useState(false);
-  const [searchLocation, setSearchLocation] = useState('');
-  const [budget, setBudget] = useState('Rs.2,000 - Rs.5,000 / Mo');
-  const [gender, setGender] = useState('Mixed');
+  const [mapAnnexes, setMapAnnexes] = useState([]);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -14,6 +18,21 @@ const Home = () => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const fetchMapAnnexes = async () => {
+      try {
+        const res = await axios.get(
+          `${API_BASE}/api/annexes/search?lat=${sliitLocation.lat}&lng=${sliitLocation.lng}&maxDistance=15000`
+        );
+        setMapAnnexes(Array.isArray(res.data?.data) ? res.data.data : []);
+      } catch (err) {
+        console.error('Error loading map annexes:', err);
+      }
+    };
+
+    fetchMapAnnexes();
   }, []);
 
   const listings = [
@@ -176,44 +195,48 @@ const Home = () => {
             Join 10,000+ students finding safe, verified, and affordable student housing near top universities.
           </p>
 
-          {/* Search Box */}
-          <div className="animate-fade-up delay-3 bg-[#161b25] border border-white/7 rounded-[20px] p-2.5 pl-6 flex flex-col md:flex-row items-stretch md:items-center gap-3 md:gap-0 shadow-[0_20px_60px_rgba(0,0,0,0.4),0_0_0_1px_rgba(45,126,247,0.1)] mb-5 search-focus transition-all duration-300">
-            <div className="flex-1 py-2 md:pr-5">
-              <label className="block text-[0.7rem] font-semibold tracking-[0.08em] text-[#5a6478] mb-1">LOCATION</label>
-              <div className="flex items-center gap-2">
-                <span className="text-sm">📍</span>
-                <input type="text" placeholder="Near which university?" value={searchLocation} onChange={e=>setSearchLocation(e.target.value)}
-                  className="bg-transparent border-none text-[#f0f4ff] text-[0.95rem] w-full outline-none placeholder:text-[#5a6478]" />
+          <div className="animate-fade-up delay-3 mb-5">
+            <div className="flex justify-center mb-4">
+              <Link
+                to="/searchAnnex"
+                className="inline-flex items-center justify-center bg-blue-500 hover:bg-blue-400 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-blue-500/20 transition-all duration-300"
+              >
+                Search Annex
+              </Link>
+            </div>
+
+            <div className="rounded-[20px] overflow-hidden border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.4),0_0_0_1px_rgba(45,126,247,0.1)]">
+              <div className="h-[250px] sm:h-[290px] md:h-[320px] w-full">
+                <Map
+                  mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
+                  initialViewState={{
+                    longitude: sliitLocation.lng,
+                    latitude: sliitLocation.lat,
+                    zoom: 12.5,
+                  }}
+                  mapStyle="mapbox://styles/mapbox/dark-v11"
+                  style={{ width: '100%', height: '100%' }}
+                >
+                  <Marker longitude={sliitLocation.lng} latitude={sliitLocation.lat}>
+                    <div className="w-8 h-8 rounded-full bg-red-600 border-2 border-white shadow-lg flex items-center justify-center text-white text-xs">
+                      🎓
+                    </div>
+                  </Marker>
+
+                  {mapAnnexes.map((annex) => (
+                    <Marker
+                      key={annex._id}
+                      longitude={annex.location.coordinates[0]}
+                      latitude={annex.location.coordinates[1]}
+                    >
+                      <div className="px-2 py-1 rounded-full border border-[#1f3058] bg-[#0b1628] text-blue-300 text-[10px] font-semibold whitespace-nowrap">
+                        {annex.title}
+                      </div>
+                    </Marker>
+                  ))}
+                </Map>
               </div>
             </div>
-            <div className="hidden md:block w-px h-10 bg-white/7 flex-shrink-0" />
-            <div className="flex-1 py-2 px-0 md:px-5">
-              <label className="block text-[0.7rem] font-semibold tracking-[0.08em] text-[#5a6478] mb-1">BUDGET</label>
-              <div className="flex items-center gap-2">
-                <span className="text-sm">💰</span>
-                <select value={budget} onChange={e=>setBudget(e.target.value)}
-                  className="bg-transparent border-none text-[#f0f4ff] text-[0.95rem] w-full outline-none cursor-pointer [&>option]:bg-[#161b25]">
-                  <option>Rs.2,000 - Rs.5,000 / Mo</option>
-                  <option>Rs.5,000 - Rs.10,000 / Mo</option>
-                  <option>Rs.10,000 - Rs.15,000 / Mo</option>
-                  <option>Rs.15,000 + / Mo</option>
-                </select>
-              </div>
-            </div>
-            <div className="hidden md:block w-px h-10 bg-white/7 flex-shrink-0" />
-            <div className="flex-1 py-2 px-0 md:px-5">
-              <label className="block text-[0.7rem] font-semibold tracking-[0.08em] text-[#5a6478] mb-1">GENDER</label>
-              <div className="flex items-center gap-2">
-                <span className="text-sm">👥</span>
-                <select value={gender} onChange={e=>setGender(e.target.value)}
-                  className="bg-transparent border-none text-[#f0f4ff] text-[0.95rem] w-full outline-none cursor-pointer [&>option]:bg-[#161b25]">
-                  <option>Mixed</option>
-                  <option>Male Only</option>
-                  <option>Female Only</option>
-                </select>
-              </div>
-            </div>
-            <Link to="/searchAnnex" className="flex-shrink-0 bg-blue-500 hover:bg-blue-400 text-white px-5 py-2 rounded-lg text-sm font-medium transition-all duration-300">  Search Annex</Link>
           </div>
 
           <div className="animate-fade-up delay-4 flex items-center gap-2.5 justify-center flex-wrap">
