@@ -108,8 +108,28 @@ const Home = () => {
 
           {/* Nav links */}
           <ul className="hidden md:flex gap-1 ml-auto">
-            {[['#browse','Home'],['#universities','Bookings'],['#listings','Top Listings']].map(([href,label])=>(
-              <li key={label}><a href={href} className="px-3.5 py-2 rounded-lg text-[#8a96b0] text-sm hover:text-[#f0f4ff] hover:bg-white/5 transition-all duration-300">{label}</a></li>
+            {[
+              { label: 'Home', type: 'anchor', href: '#browse' },
+              { label: 'Bookings', type: 'route', to: '/annex-bookings' },
+              { label: 'Top Listings', type: 'anchor', href: '#listings' },
+            ].map((item) => (
+              <li key={item.label}>
+                {item.type === 'route' ? (
+                  <Link
+                    to={item.to}
+                    className="px-3.5 py-2 rounded-lg text-[#8a96b0] text-sm hover:text-[#f0f4ff] hover:bg-white/5 transition-all duration-300"
+                  >
+                    {item.label}
+                  </Link>
+                ) : (
+                  <a
+                    href={item.href}
+                    className="px-3.5 py-2 rounded-lg text-[#8a96b0] text-sm hover:text-[#f0f4ff] hover:bg-white/5 transition-all duration-300"
+                  >
+                    {item.label}
+                  </a>
+                )}
+              </li>
             ))}
             <li><Link to="/support" className="px-3.5 py-2 rounded-lg text-[#8a96b0] text-sm hover:text-[#f0f4ff] hover:bg-white/5 transition-all duration-300">Student Support</Link></li>
             <li><Link to="/about"   className="px-3.5 py-2 rounded-lg text-[#8a96b0] text-sm hover:text-[#f0f4ff] hover:bg-white/5 transition-all duration-300">About Us</Link></li>

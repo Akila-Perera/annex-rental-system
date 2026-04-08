@@ -13,6 +13,7 @@ import SearchAnnex from './pages/SearchAnnex';
 import AddAnnexPage from './pages/AddAnnexPage';
 import AnnexDetailsPage from './pages/AnnexDetailsPage';
 import BookingPage from './pages/BookingPage';
+import AnnexBookingPage from './pages/AnnexBookingPage';
 
 // Import your review system pages
 import Properties from './pages/Properties';
@@ -38,6 +39,7 @@ function App() {
           <Route path="/addAnnex" element={<AddAnnexPage />} />
           <Route path="/annex/:id" element={<AnnexDetailsPage />} />
           <Route path="/booking" element={<BookingPage />} />
+          <Route path="/annex-bookings" element={<AnnexBookingPage />} />
           
           {/* Your Review System Routes */}
           <Route path="/properties" element={<Properties />} />

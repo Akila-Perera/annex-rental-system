@@ -743,7 +743,7 @@ export default function AnnexDetailsPage() {
               )}
             </Section>
 
-            {/* ========== UPDATED REVIEWS SECTION ========== */}
+            -000{/* Reviews */}
             <Section title="Student Reviews">
               {/* Quality Score Display */}
               {quality && (
