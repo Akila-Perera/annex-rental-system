@@ -39,14 +39,42 @@ function SearchAnnex() {
     }
   };
 
-  const getCommute = async (annexId) => {
-    setCommuteInfo(null);
-    try {
-      const res = await axios.get(`${API_BASE}/api/annexes/${annexId}/distance`);
-      setCommuteInfo(res.data.commute);
-    } catch (err) {
-      console.error('Error fetching commute:', err);
+  const calculateDistanceKm = (startLat, startLng, endLat, endLng) => {
+    const toRad = (value) => (value * Math.PI) / 180;
+    const earthRadiusKm = 6371;
+    const dLat = toRad(endLat - startLat);
+    const dLng = toRad(endLng - startLng);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(startLat)) * Math.cos(toRad(endLat)) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return earthRadiusKm * c;
+  };
+
+  const getCommute = (annex) => {
+    if (!annex?.location?.coordinates || annex.location.coordinates.length < 2) {
+      setCommuteInfo(null);
+      return;
     }
+
+    const [annexLng, annexLat] = annex.location.coordinates;
+    const distanceKm = calculateDistanceKm(
+      sliitLocation.lat,
+      sliitLocation.lng,
+      annexLat,
+      annexLng
+    );
+
+    // Simple estimate with average city driving speed.
+    const averageSpeedKmh = 25;
+    const durationMins = Math.max(1, Math.round((distanceKm / averageSpeedKmh) * 60));
+
+    setCommuteInfo({
+      distance_km: distanceKm.toFixed(2),
+      duration_mins: durationMins,
+      mode: 'estimated',
+    });
   };
 
   useEffect(() => { fetchAnnexes(); }, []);
@@ -186,7 +214,7 @@ function SearchAnnex() {
                   }}
                   onMouseEnter={() => {
                     setSelectedAnnex(annex);
-                    getCommute(annex._id);
+                    getCommute(annex);
                   }}
                 >
                   {/* Left accent bar */}
@@ -272,7 +300,7 @@ function SearchAnnex() {
               onClick={(e) => {
                 e.originalEvent.stopPropagation();
                 setSelectedAnnex(annex);
-                getCommute(annex._id);
+                getCommute(annex);
                 setActiveCard(annex._id);
               }}
             >
@@ -288,7 +316,7 @@ function SearchAnnex() {
                       : 'bg-[#0b1628] border-[#1f3058] text-blue-400 hover:bg-blue-600 hover:text-white hover:border-blue-400'
                   }`}
                 >
-                  Rs. {annex.price?.toLocaleString()}
+                  {annex.title}
                 </div>
                 <div className={`absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-2 h-2 rotate-45 border-r border-b ${
                   activeCard === annex._id ? 'bg-blue-600 border-blue-400' : 'bg-[#0b1628] border-[#1f3058]'

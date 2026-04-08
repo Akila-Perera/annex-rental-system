@@ -247,7 +247,7 @@ export default function AnnexDetailsPage() {
               )}
             </Section>
 
-            {/* Reviews */}
+            -000{/* Reviews */}
             <Section title="Student Reviews">
               <div className="flex flex-col sm:flex-row gap-6 items-start">
                 <div className="text-center shrink-0">
