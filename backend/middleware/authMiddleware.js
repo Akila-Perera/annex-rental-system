@@ -33,5 +33,12 @@ const student = (req, res, next) => {
     return res.status(403).json({ success: false, message: 'Student only' });
   }
 };
+const landlord = (req, res, next) => {
+  if (req.user && req.user.role === 'landlord') {
+    next();
+  } else {
+    return res.status(403).json({ success: false, message: 'Landlord only' });
+  }
+};
 
-module.exports = { protect, admin, student };
+module.exports = { protect, admin, student, landlord };

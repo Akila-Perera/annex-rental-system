@@ -7,6 +7,11 @@ const bookingSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    // For annex-based bookings, this stores the annex id
+    annex: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Annex',
+    },
     property: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Property',
@@ -19,6 +24,10 @@ const bookingSchema = new mongoose.Schema(
     },
     checkInDate: { type: Date },
     checkOutDate: { type: Date },
+    notes: {
+      type: String,
+      trim: true,
+    },
     reviewed: {
       type: Boolean,
       default: false,
@@ -28,3 +37,4 @@ const bookingSchema = new mongoose.Schema(
 );
 
 export default mongoose.model('Booking', bookingSchema);
+

@@ -7,6 +7,8 @@ const connectDB     = require('./config/db');
 const annexRoutes   = require('./routes/annexRoutes');
 const supportRoutes = require('./routes/supportRoutes');
 const authRoutes    = require('./routes/authRoutes');
+const inquiryRoutes = require('./routes/inquiryRoutes');
+const bookingRoutesModule = require('./routes/bookingRoutes');
 const setServers = require('dns').setServers;
 
 // Routes written as ES modules export the router as default.
@@ -15,9 +17,10 @@ const reviewRoutesModule  = require('./routes/reviewRoutes');
 const adminRoutesModule   = require('./routes/adminRoutes');
 const qualityRoutesModule = require('./routes/qualityRoutes');
 
-const reviewRoutes  = reviewRoutesModule.default  || reviewRoutesModule;
-const adminRoutes   = adminRoutesModule.default   || adminRoutesModule;
-const qualityRoutes = qualityRoutesModule.default || qualityRoutesModule;
+const reviewRoutes   = reviewRoutesModule.default   || reviewRoutesModule;
+const adminRoutes    = adminRoutesModule.default    || adminRoutesModule;
+const qualityRoutes  = qualityRoutesModule.default  || qualityRoutesModule;
+const bookingRoutes  = bookingRoutesModule.default  || bookingRoutesModule;
 
 setServers(["1.1.1.1", "8.8.8.8"]);
 
@@ -43,6 +46,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/support', supportRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/annexes', annexRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/inquiries', inquiryRoutes);
 
 // Your Review System Routes
 app.use('/api/reviews', reviewRoutes);
