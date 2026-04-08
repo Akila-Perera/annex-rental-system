@@ -1,6 +1,6 @@
 import Review from '../models/Review.js';
-import Property from '../models/Property.js';
-import User from '../models/User.js';
+import Property from '../models/Annex.js';  // Changed from Property to Annex
+import User from '../models/UserModel.js';  // Changed from User to UserModel
 import { calculatePropertyScore } from './qualityController.js';
 
 // @desc    Get all reviews for moderation (admin only)

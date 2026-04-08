@@ -1,13 +1,13 @@
-import express from 'express';
-import { 
+const express = require('express');
+const { 
   getModerationQueue,
   approveReview,
   rejectReview,
   flagReview,
   bulkModerate,
   getModerationStats
-} from '../controllers/moderationController.js';
-import { protect, admin } from '../middleware/authMiddleware.js';
+} = require('../controllers/moderationController.js');
+const { protect, admin } = require('../middleware/authMiddleware.js');
 
 const router = express.Router();
 
@@ -22,4 +22,4 @@ router.put('/reviews/:reviewId/reject', rejectReview);
 router.put('/reviews/:reviewId/flag', flagReview);
 router.post('/reviews/bulk', bulkModerate);
 
-export default router;
+module.exports = router;
