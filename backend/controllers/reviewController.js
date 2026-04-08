@@ -3,57 +3,78 @@ import Review from '../models/Review.js';
 import Booking from '../models/Booking.js';
 import Property from '../models/Annex.js';  // Changed from Property to Annex
 
-// @desc    Create a new review (only for verified bookings)
+// @desc    Create a new review (now allows reviews without booking)
 // @route   POST /api/reviews
 // @access  Private (Student only)
 export const createReview = async (req, res) => {
   try {
-    const { bookingId, ratings, title, comment, pros, cons, photos } = req.body;
+    const { bookingId, propertyId, ratings, title, comment, pros, cons, photos } = req.body;
     const studentId = req.user._id;
 
-    // Check if booking exists and belongs to student
-    const booking = await Booking.findOne({
-      _id: bookingId,
-      student: studentId,
-      status: 'completed' // Only completed bookings can be reviewed
-    });
+    let property = null;
+    let isVerified = false;
+    let booking = null;
 
-    if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: 'Booking not found or not eligible for review'
+    // If bookingId is provided and not empty, validate it
+    if (bookingId && bookingId !== '') {
+      // Check if booking exists and belongs to student
+      booking = await Booking.findOne({
+        _id: bookingId,
+        student: studentId,
+        status: 'completed'
       });
+
+      if (booking) {
+        property = booking.property;
+        isVerified = true;
+        
+        // Check if review already exists for this booking
+        const existingReview = await Review.findOne({ booking: bookingId });
+        if (existingReview) {
+          return res.status(400).json({
+            success: false,
+            message: 'You have already reviewed this property from this booking'
+          });
+        }
+      }
     }
 
-    // Check if review already exists for this booking
-    const existingReview = await Review.findOne({ booking: bookingId });
-    if (existingReview) {
+    // If no booking or booking not found, use propertyId from request
+    if (!property && propertyId) {
+      property = propertyId;
+      isVerified = false;
+    }
+
+    // If still no property, return error
+    if (!property) {
       return res.status(400).json({
         success: false,
-        message: 'You have already reviewed this property'
+        message: 'Property ID is required to submit a review'
       });
     }
 
     // Create review
     const review = new Review({
       student: studentId,
-      property: booking.property,
-      booking: bookingId,
+      property: property,
+      booking: bookingId || null,
       ratings,
       title,
       comment,
       pros: pros || [],
       cons: cons || [],
       photos: photos || [],
-      isVerified: true,
-      status: 'pending'
+      isVerified: isVerified,
+      status: 'pending'  // Always pending for admin approval
     });
 
     await review.save();
 
-    // Mark booking as reviewed
-    booking.reviewed = true;
-    await booking.save();
+    // If there was a valid booking, mark it as reviewed
+    if (booking) {
+      booking.reviewed = true;
+      await booking.save();
+    }
 
     res.status(201).json({
       success: true,
