@@ -10,6 +10,16 @@ const Home = () => {
   const [gender, setGender] = useState('Mixed');
   const [topListings, setTopListings] = useState([]);
   const [loadingTop, setLoadingTop] = useState(true);
+import Map, { Marker } from 'react-map-gl/mapbox';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import axios from 'axios';
+
+const API_BASE = 'http://localhost:5000';
+const sliitLocation = { lat: 6.9147, lng: 79.9723 };
+
+const Home = () => {
+  const [scrolled, setScrolled] = useState(false);
+  const [mapAnnexes, setMapAnnexes] = useState([]);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -79,6 +89,68 @@ const Home = () => {
     if (gender === 'Male') return { text: 'MALE ONLY', class: 'bg-blue-700/85 text-white' };
     return { text: 'VERIFIED', class: 'bg-green-600/85 text-white' };
   };
+  useEffect(() => {
+    const fetchMapAnnexes = async () => {
+      try {
+        const res = await axios.get(
+          `${API_BASE}/api/annexes/search?lat=${sliitLocation.lat}&lng=${sliitLocation.lng}&maxDistance=15000`
+        );
+        setMapAnnexes(Array.isArray(res.data?.data) ? res.data.data : []);
+      } catch (err) {
+        console.error('Error loading map annexes:', err);
+      }
+    };
+
+    fetchMapAnnexes();
+  }, []);
+
+  const listings = [
+    {
+      id: 1,
+      name: 'The Royal Plaza',
+      badge: 'VERIFIED',
+      badgeClass: 'bg-green-600/85 text-white',
+      price: 'Rs.5,500 / Mo',
+      rating: 4.9,
+      distance: '0.2 miles from Main Campus',
+      image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&q=80',
+      amenities: [
+        { icon: '👥', label: 'MIXED' },
+        { icon: '📶', label: 'GIGABIT' },
+        { icon: '🔒', label: '24/7 SEC' },
+      ],
+    },
+    {
+      id: 2,
+      name: 'Starlight Residences',
+      badge: 'FEMALE ONLY',
+      badgeClass: 'bg-pink-600/85 text-white',
+      price: 'Rs.10,550 / Mo',
+      rating: 4.7,
+      distance: '0.5 miles from Campus',
+      image: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=600&q=80',
+      amenities: [
+        { icon: '🍽️', label: 'MESS' },
+        { icon: '❄️', label: 'AC AVAIL.' },
+        { icon: '👕', label: 'LAUNDRY' },
+      ],
+    },
+    {
+      id: 3,
+      name: 'Horizon Heights',
+      badge: 'MALE ONLY',
+      badgeClass: 'bg-blue-700/85 text-white',
+      price: 'Rs.2,500 / Mo',
+      rating: 4.8,
+      distance: '0.1 miles from Campus',
+      image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=600&q=80',
+      amenities: [
+        { icon: '🏋️', label: 'GYM' },
+        { icon: '🏠', label: 'ROOFTOP' },
+        { icon: '🅿️', label: 'PARKING' },
+      ],
+    },
+  ];
 
   const features = [
     { icon: '✅', title: 'Verified Listings',  desc: 'Every property is physically visited and verified by our team.' },
@@ -186,18 +258,46 @@ const Home = () => {
                   <option>Rs.15,000 + / Mo</option>
                 </select>
               </div>
+          <div className="animate-fade-up delay-3 mb-5">
+            <div className="flex justify-center mb-4">
+              <Link
+                to="/searchAnnex"
+                className="inline-flex items-center justify-center bg-blue-500 hover:bg-blue-400 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-blue-500/20 transition-all duration-300"
+              >
+                Search Annex
+              </Link>
             </div>
-            <div className="hidden md:block w-px h-10 bg-white/7 flex-shrink-0" />
-            <div className="flex-1 py-2 px-0 md:px-5">
-              <label className="block text-[0.7rem] font-semibold tracking-[0.08em] text-[#5a6478] mb-1">GENDER</label>
-              <div className="flex items-center gap-2">
-                <span className="text-sm">👥</span>
-                <select value={gender} onChange={e=>setGender(e.target.value)}
-                  className="bg-transparent border-none text-[#f0f4ff] text-[0.95rem] w-full outline-none cursor-pointer [&>option]:bg-[#161b25]">
-                  <option>Mixed</option>
-                  <option>Male Only</option>
-                  <option>Female Only</option>
-                </select>
+
+            <div className="rounded-[20px] overflow-hidden border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.4),0_0_0_1px_rgba(45,126,247,0.1)]">
+              <div className="h-[250px] sm:h-[290px] md:h-[320px] w-full">
+                <Map
+                  mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
+                  initialViewState={{
+                    longitude: sliitLocation.lng,
+                    latitude: sliitLocation.lat,
+                    zoom: 12.5,
+                  }}
+                  mapStyle="mapbox://styles/mapbox/dark-v11"
+                  style={{ width: '100%', height: '100%' }}
+                >
+                  <Marker longitude={sliitLocation.lng} latitude={sliitLocation.lat}>
+                    <div className="w-8 h-8 rounded-full bg-red-600 border-2 border-white shadow-lg flex items-center justify-center text-white text-xs">
+                      🎓
+                    </div>
+                  </Marker>
+
+                  {mapAnnexes.map((annex) => (
+                    <Marker
+                      key={annex._id}
+                      longitude={annex.location.coordinates[0]}
+                      latitude={annex.location.coordinates[1]}
+                    >
+                      <div className="px-2 py-1 rounded-full border border-[#1f3058] bg-[#0b1628] text-blue-300 text-[10px] font-semibold whitespace-nowrap">
+                        {annex.title}
+                      </div>
+                    </Marker>
+                  ))}
+                </Map>
               </div>
             </div>
             <Link to="/searchAnnex" className="flex-shrink-0 bg-blue-500 hover:bg-blue-400 text-white px-5 py-2 rounded-lg text-sm font-medium transition-all duration-300">Search Annex</Link>

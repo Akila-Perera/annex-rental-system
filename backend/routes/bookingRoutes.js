@@ -4,6 +4,8 @@ import {
 	getMyBookings,
 	getMyCompletedBookings,
 	getOwnerBookings,
+	getPendingBookingRequests,
+	respondToBookingRequest,
 } from '../controllers/bookingController.js';
 import { protect, student } from '../middleware/authMiddleware.js';
 
@@ -11,6 +13,8 @@ const router = express.Router();
 
 // Landlord dashboard
 router.get('/owner/dashboard', protect, getOwnerBookings);
+router.get('/owner/pending-requests', protect, getPendingBookingRequests);
+router.post('/respond-request', protect, respondToBookingRequest);
 
 // Student bookings
 router.post('/', protect, student, createBooking);

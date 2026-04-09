@@ -28,6 +28,10 @@ export default function Profile() {
     upcomingBookings: 0,
   });
   const [ownerBookingsLoading, setOwnerBookingsLoading] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [pendingRequestsLoading, setPendingRequestsLoading] = useState(false);
+  const [studentBookingRequests, setStudentBookingRequests] = useState([]);
+  const [studentBookingRequestsLoading, setStudentBookingRequestsLoading] = useState(false);
   const [studentInquiries, setStudentInquiries] = useState([]);
   const [studentInquiriesLoading, setStudentInquiriesLoading] = useState(false);
   const [ownerInquiries, setOwnerInquiries] = useState([]);
@@ -63,8 +67,10 @@ export default function Profile() {
     if (isLandlord && user?.id) {
       fetchOwnerAnnexes();
       fetchOwnerBookings();
+      fetchPendingRequests();
       fetchOwnerInquiries();
     } else {
+      fetchStudentBookingRequests();
       fetchStudentInquiries();
     }
   }, [isLandlord, user?.id, token]);
@@ -93,6 +99,73 @@ export default function Profile() {
       console.error('Error fetching owner bookings:', fetchError);
     } finally {
       setOwnerBookingsLoading(false);
+    }
+  };
+
+  const fetchPendingRequests = async () => {
+    if (!isLandlord || !token) return;
+    setPendingRequestsLoading(true);
+    try {
+      const res = await fetch('http://localhost:5000/api/bookings/owner/pending-requests', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPendingRequests(data.pendingRequests || []);
+      }
+    } catch (fetchError) {
+      console.error('Error fetching pending requests:', fetchError);
+    } finally {
+      setPendingRequestsLoading(false);
+    }
+  };
+
+  const fetchStudentBookingRequests = async () => {
+    if (isLandlord || !token) return;
+    setStudentBookingRequestsLoading(true);
+    try {
+      const res = await fetch('http://localhost:5000/api/bookings', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setStudentBookingRequests(data.bookings || []);
+      }
+    } catch (fetchError) {
+      console.error('Error fetching student booking requests:', fetchError);
+    } finally {
+      setStudentBookingRequestsLoading(false);
+    }
+  };
+
+  const handleRespondToRequest = async (bookingId, response) => {
+    try {
+      setLoading(true);
+      setError('');
+      const res = await fetch('http://localhost:5000/api/bookings/respond-request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ bookingId, response }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setError(data.message || 'Failed to update booking request.');
+        return;
+      }
+      fetchPendingRequests();
+      fetchOwnerBookings();
+    } catch (fetchError) {
+      console.error('Error updating booking request:', fetchError);
+      setError('Server error while updating booking request.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -326,7 +399,7 @@ export default function Profile() {
       <div className="flex">
 
         {/* Chat Sidebar */}
-        <aside className="fixed inset-y-0 left-0 w-[300px] bg-[#111827] border-r border-[#1f2a3c] shadow-2xl flex flex-col p-6">
+        <aside className="fixed inset-y-0 left-0 h-screen w-[300px] bg-[#111827] border-r border-[#1f2a3c] shadow-2xl flex flex-col p-6 overflow-hidden">
           <h2 className="text-white text-lg font-semibold mb-1">Chat</h2>
           <p className="text-gray-400 text-xs mb-3">
             {isLandlord
@@ -336,6 +409,7 @@ export default function Profile() {
 
           {isLandlord ? (
             <>
+              <p className="text-[11px] text-gray-500 uppercase tracking-wide mb-2">Messages</p>
               {ownerInquiriesLoading && (
                 <p className="text-gray-400 text-sm">Loading messages...</p>
               )}
@@ -343,7 +417,7 @@ export default function Profile() {
                 <p className="text-gray-500 text-sm">No inquiries yet.</p>
               )}
               {!ownerInquiriesLoading && ownerInquiries.length > 0 && (
-                <div className="mt-1 flex-1 overflow-y-auto space-y-3 pr-1 flex flex-col">
+                <div className="mt-1 max-h-[42%] overflow-y-auto space-y-3 pr-1 flex flex-col">
                   {ownerInquiries.map((inq) => {
                     const lastMessage = inq.messages[inq.messages.length - 1];
                     const senderLabel = lastMessage?.senderRole === 'landlord' ? 'You' : 'Student';
@@ -387,6 +461,54 @@ export default function Profile() {
                   })}
                 </div>
               )}
+
+              <div className="mt-4 pt-3 border-t border-[#1f2a3c] flex-1 min-h-0 flex flex-col">
+                <p className="text-[11px] text-gray-500 uppercase tracking-wide mb-2">
+                  Pending Booking Requests
+                </p>
+                {pendingRequestsLoading && (
+                  <p className="text-gray-400 text-sm">Loading requests...</p>
+                )}
+                {!pendingRequestsLoading && pendingRequests.length === 0 && (
+                  <p className="text-gray-500 text-sm">No pending requests.</p>
+                )}
+                {!pendingRequestsLoading && pendingRequests.length > 0 && (
+                  <div className="space-y-2 flex-1 min-h-0 overflow-y-auto pr-1">
+                    {pendingRequests.map((request) => (
+                      <div
+                        key={request._id}
+                        className="bg-[#0d1526] border border-[#1f2a3c] rounded-xl p-2 text-xs text-gray-200"
+                      >
+                        <p className="text-white font-semibold text-[11px] truncate">
+                          {request.student?.firstName} {request.student?.lastName}
+                        </p>
+                        <p className="text-gray-400 text-[10px] truncate">{request.annex?.title || 'Annex'}</p>
+                        <p className="text-gray-500 text-[10px] mb-1">
+                          {formatDate(request.checkInDate)} to {formatDate(request.checkOutDate)}
+                        </p>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() => handleRespondToRequest(request._id, 'accepted')}
+                            className="flex-1 px-2 py-1 rounded bg-green-600 text-white text-[10px] font-semibold disabled:opacity-50"
+                          >
+                            Accept
+                          </button>
+                          <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() => handleRespondToRequest(request._id, 'rejected')}
+                            className="flex-1 px-2 py-1 rounded bg-red-600 text-white text-[10px] font-semibold disabled:opacity-50"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <>
@@ -397,7 +519,7 @@ export default function Profile() {
                 <p className="text-gray-500 text-sm">You haven&apos;t sent any inquiries yet.</p>
               )}
               {!studentInquiriesLoading && studentInquiries.length > 0 && (
-                <div className="mt-1 flex-1 overflow-y-auto space-y-3 pr-1 flex flex-col">
+                <div className="mt-1 max-h-[40%] overflow-y-auto space-y-3 pr-1 flex flex-col">
                   {studentInquiries.map((inq) => {
                     const lastMessage = inq.messages[inq.messages.length - 1];
                     const senderLabel = lastMessage?.senderRole === 'landlord' ? 'Owner' : 'You';
@@ -435,6 +557,56 @@ export default function Profile() {
                   })}
                 </div>
               )}
+
+              <div className="mt-4 pt-3 border-t border-[#1f2a3c] flex-1 min-h-0 flex flex-col">
+                <p className="text-[11px] text-gray-500 uppercase tracking-wide mb-2">Your Booking Requests</p>
+                {studentBookingRequestsLoading && (
+                  <p className="text-gray-400 text-sm">Loading booking requests...</p>
+                )}
+                {!studentBookingRequestsLoading && studentBookingRequests.length === 0 && (
+                  <p className="text-gray-500 text-sm">No booking requests yet.</p>
+                )}
+                {!studentBookingRequestsLoading && studentBookingRequests.length > 0 && (
+                  <div className="space-y-2 flex-1 min-h-0 overflow-y-auto pr-1">
+                    {studentBookingRequests.map((request) => {
+                      const statusLabel =
+                        request.status === 'confirmed'
+                          ? 'Accepted'
+                          : request.status === 'cancelled'
+                            ? 'Rejected'
+                            : 'Pending';
+                      const statusClass =
+                        request.status === 'confirmed'
+                          ? 'text-green-400'
+                          : request.status === 'cancelled'
+                            ? 'text-red-400'
+                            : 'text-yellow-400';
+                      const ownerMessage =
+                        request.status === 'confirmed'
+                          ? 'Owner accepted your booking request.'
+                          : request.status === 'cancelled'
+                            ? 'Owner rejected your booking request.'
+                            : 'Request sent. Waiting for owner approval.';
+
+                      return (
+                        <div
+                          key={request._id}
+                          className="bg-[#0d1526] border border-[#1f2a3c] rounded-xl p-2 text-xs text-gray-200"
+                        >
+                          <p className="text-white font-semibold text-[11px] truncate">
+                            {request.annex?.title || 'Annex'}
+                          </p>
+                          <p className="text-gray-500 text-[10px]">
+                            {formatDate(request.checkInDate)} to {formatDate(request.checkOutDate)}
+                          </p>
+                          <p className={`text-[10px] font-semibold ${statusClass}`}>Status: {statusLabel}</p>
+                          <p className="text-[10px] text-gray-400 mt-0.5">{ownerMessage}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </>
           )}
         </aside>
