@@ -135,19 +135,38 @@ export const getAllPropertiesQuality = async (req, res) => {
   }
 };
 
-// @desc    Get top rated properties
+// @desc    Get top rated properties (FIXED - works with Home.jsx)
 // @route   GET /api/quality/top-rated
 // @access  Public
 export const getTopRated = async (req, res) => {
   try {
-    const { limit = 10 } = req.query;
+    const { limit = 3 } = req.query;
+    
+    // Get properties with quality scores (only those with reviews)
     const topRated = await QualityScore.find({ totalReviews: { $gt: 0 } })
       .sort({ overallScore: -1 })
       .limit(Number(limit))
-      .populate('property', 'title price location');
-    res.json({ success: true, topRated });
+      .populate('property', 'title price location imageUrls preferredGender');
+    
+    // Format response for Home.jsx
+    const properties = topRated.map(item => ({
+      averageRating: item.overallScore,
+      totalReviews: item.totalReviews,
+      property: item.property,
+      overallScore: item.overallScore,
+      categoryScores: item.categoryScores
+    }));
+    
+    res.json({ 
+      success: true, 
+      properties: properties 
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Error in getTopRated:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
   }
 };
 

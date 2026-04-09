@@ -312,7 +312,9 @@ const AdminDashboard = () => {
                 <div>
                   <h3 style={{ margin: 0, color: '#333' }}>{review.property?.title || 'Unknown Property'}</h3>
                   <p style={{ margin: '0.5rem 0 0', color: '#666' }}>
-                    By: {review.student?.name || 'Unknown'} • {formatDate(review.createdAt)}
+                    By: {review.student?.firstName && review.student?.lastName 
+  ? `${review.student.firstName} ${review.student.lastName}`
+  : review.student?.name || 'Unknown'} • {formatDate(review.createdAt)}
                   </p>
                 </div>
                 <div style={{ 

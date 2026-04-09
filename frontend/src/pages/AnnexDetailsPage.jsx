@@ -38,7 +38,49 @@ const StarRating = ({ rating, setRating, readonly = false }) => {
   );
 };
 
-// ========== WRITE REVIEW COMPONENT (UPDATED - NO BOOKING REQUIRED) ==========
+// ========== DETAILED RATINGS WITH VIEW MORE ==========
+const DetailsRatings = ({ ratings }) => {
+  const [showDetails, setShowDetails] = useState(false);
+  
+  const ratingCategories = [
+    { key: 'cleanliness', label: 'Cleanliness', icon: '🧹' },
+    { key: 'communication', label: 'Communication', icon: '💬' },
+    { key: 'valueForMoney', label: 'Value for Money', icon: '💰' },
+    { key: 'location', label: 'Location', icon: '📍' },
+    { key: 'amenities', label: 'Amenities', icon: '🏊' }
+  ];
+  
+  if (!ratings) return null;
+  
+  return (
+    <div className="mt-3 pt-2 border-t border-gray-700/50">
+      <button 
+        onClick={() => setShowDetails(!showDetails)}
+        className="text-xs text-blue-400 hover:text-blue-300 transition flex items-center gap-1"
+      >
+        {showDetails ? '▼ View Less' : '▶ View More'}
+      </button>
+      
+      {showDetails && (
+        <div className="mt-2 grid grid-cols-1 gap-1">
+          {ratingCategories.map(cat => (
+            <div key={cat.key} className="flex items-center justify-between">
+              <span className="text-xs text-gray-400">{cat.icon} {cat.label}</span>
+              <div className="flex items-center gap-1">
+                <div className="text-yellow-400 text-xs">
+                  {'★'.repeat(ratings[cat.key] || 0)}{'☆'.repeat(5 - (ratings[cat.key] || 0))}
+                </div>
+                <span className="text-xs text-gray-500">({ratings[cat.key] || 0})</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ========== WRITE REVIEW COMPONENT ==========
 const WriteReviewModal = ({ propertyId, propertyTitle, onClose, onSuccess }) => {
   const navigate = useNavigate();
   
@@ -63,20 +105,17 @@ const WriteReviewModal = ({ propertyId, propertyTitle, onClose, onSuccess }) => 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // Fetch user's completed bookings
   useEffect(() => {
     const fetchBookings = async () => {
       try {
         const response = await api.get('/bookings/completed');
         const bookings = response.data.bookings || [];
         
-        // Filter bookings for this property
         const filtered = bookings.filter(
           booking => booking.property?._id === propertyId
         );
         setFilteredBookings(filtered);
         
-        // Auto-select if only one booking
         if (filtered.length === 1) {
           setFormData(prev => ({
             ...prev,
@@ -95,11 +134,6 @@ const WriteReviewModal = ({ propertyId, propertyTitle, onClose, onSuccess }) => 
 
   const validate = () => {
     const newErrors = {};
-
-    // BOOKING VALIDATION REMOVED - no longer required
-    // if (!formData.bookingId) {
-    //   newErrors.bookingId = 'Please select a completed booking';
-    // }
 
     if (formData.ratings.overall === 0) newErrors.overall = 'Please rate your overall experience';
     if (formData.ratings.cleanliness === 0) newErrors.cleanliness = 'Please rate cleanliness';
@@ -241,7 +275,6 @@ const WriteReviewModal = ({ propertyId, propertyTitle, onClose, onSuccess }) => 
         </div>
         
         <form onSubmit={handleSubmit}>
-          {/* Booking Selection - Only show if user has bookings */}
           {filteredBookings.length > 0 && (
             <div className="mb-4 p-4 rounded-lg bg-[#0d1526]">
               <h3 className="text-gray-300 text-sm mb-2">Select Your Completed Booking (Optional)</h3>
@@ -267,7 +300,6 @@ const WriteReviewModal = ({ propertyId, propertyTitle, onClose, onSuccess }) => 
             </div>
           )}
 
-          {/* Ratings Section */}
           <div className="mb-4">
             <h3 className="text-gray-300 text-sm mb-2">Rate Your Stay</h3>
             <div className="space-y-3">
@@ -286,7 +318,6 @@ const WriteReviewModal = ({ propertyId, propertyTitle, onClose, onSuccess }) => 
             </div>
           </div>
 
-          {/* Review Title */}
           <div className="mb-4">
             <label className="text-gray-400 text-xs block mb-1">Review Title *</label>
             <input
@@ -300,7 +331,6 @@ const WriteReviewModal = ({ propertyId, propertyTitle, onClose, onSuccess }) => 
             {errors.title && <p className="text-red-400 text-xs mt-1">{errors.title}</p>}
           </div>
 
-          {/* Review Comment */}
           <div className="mb-4">
             <label className="text-gray-400 text-xs block mb-1">Your Review *</label>
             <textarea
@@ -314,7 +344,6 @@ const WriteReviewModal = ({ propertyId, propertyTitle, onClose, onSuccess }) => 
             {errors.comment && <p className="text-red-400 text-xs mt-1">{errors.comment}</p>}
           </div>
 
-          {/* Pros Section */}
           <div className="mb-4">
             <label className="text-gray-400 text-xs block mb-1">What did you like? (Optional)</label>
             {formData.pros.map((pro, index) => (
@@ -334,7 +363,6 @@ const WriteReviewModal = ({ propertyId, propertyTitle, onClose, onSuccess }) => 
             <button type="button" onClick={() => addProsConsField('pros')} className="text-blue-400 text-sm hover:text-blue-300">+ Add another pro</button>
           </div>
 
-          {/* Cons Section */}
           <div className="mb-4">
             <label className="text-gray-400 text-xs block mb-1">What could be improved? (Optional)</label>
             {formData.cons.map((con, index) => (
@@ -354,7 +382,6 @@ const WriteReviewModal = ({ propertyId, propertyTitle, onClose, onSuccess }) => 
             <button type="button" onClick={() => addProsConsField('cons')} className="text-blue-400 text-sm hover:text-blue-300">+ Add another con</button>
           </div>
 
-          {/* Submit Buttons */}
           <div className="flex gap-3 justify-end mt-6">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-700 text-white text-sm hover:bg-gray-600">Cancel</button>
             <button type="submit" disabled={loading} className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-500 disabled:opacity-50">
@@ -386,12 +413,10 @@ export default function AnnexDetailsPage() {
   const [inquiryError, setInquiryError] = useState('');
   const [inquirySuccess, setInquirySuccess] = useState('');
   
-  // ========== REVIEW & QUALITY STATES ==========
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [quality, setQuality] = useState(null);
   const [reviews, setReviews] = useState([]);
 
-  // Helper functions
   const renderStars = (rating) => {
     return '★'.repeat(rating) + '☆'.repeat(5 - rating);
   };
@@ -401,37 +426,34 @@ export default function AnnexDetailsPage() {
     return new Date(dateString).toLocaleDateString();
   };
 
-  // Fetch quality and reviews data
-const fetchPropertyData = async () => {
-  if (!annex?._id) return;
-  
-  // Fetch reviews first (this will work)
-  try {
-    const reviewsRes = await api.get(`/reviews/property/${annex._id}`);
-    setReviews(reviewsRes.data.reviews || []);
-  } catch (error) {
-    console.error('Error fetching reviews:', error);
-  }
-  
-  // Try quality separately (don't let it fail)
-  try {
-    const qualityRes = await api.get(`/quality/property/${annex._id}`);
-    if (qualityRes.data.qualityScore) {
-      setQuality(qualityRes.data.qualityScore);
+  const fetchPropertyData = async () => {
+    if (!annex?._id) return;
+    
+    try {
+      const reviewsRes = await api.get(`/reviews/property/${annex._id}`);
+      setReviews(reviewsRes.data.reviews || []);
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
     }
-  } catch (qualityError) {
-    console.log('Quality API not available');
-  }
-};
+    
+    try {
+      const qualityRes = await api.get(`/quality/property/${annex._id}`);
+      if (qualityRes.data.qualityScore) {
+        setQuality(qualityRes.data.qualityScore);
+      }
+    } catch (qualityError) {
+      console.log('Quality API not available');
+    }
+  };
 
-  // Calculate rating percentages from actual reviews
+  // Calculate rating percentages from actual reviews - FIXED
   const getRatingPercentages = () => {
     if (reviews.length === 0) {
       return [
-        { label: '5 Star', pct: 85, count: 0 },
-        { label: '4 Star', pct: 12, count: 0 },
-        { label: '3 Star', pct: 2, count: 0 },
-        { label: '2 Star', pct: 1, count: 0 },
+        { label: '5 Star', pct: 0, count: 0 },
+        { label: '4 Star', pct: 0, count: 0 },
+        { label: '3 Star', pct: 0, count: 0 },
+        { label: '2 Star', pct: 0, count: 0 },
         { label: '1 Star', pct: 0, count: 0 }
       ];
     }
@@ -449,9 +471,9 @@ const fetchPropertyData = async () => {
     }));
   };
 
-  // Calculate average rating from reviews
+  // Calculate average rating from reviews - FIXED
   const getAverageRating = () => {
-    if (reviews.length === 0) return 4.8;
+    if (reviews.length === 0) return 0;
     const sum = reviews.reduce((acc, review) => acc + (review.ratings?.overall || 0), 0);
     return (sum / reviews.length).toFixed(1);
   };
@@ -473,7 +495,6 @@ const fetchPropertyData = async () => {
       });
   }, [id, state?.annex]);
 
-  // Fetch quality and reviews when annex loads
   useEffect(() => {
     if (annex?._id) {
       fetchPropertyData();
@@ -598,7 +619,6 @@ const fetchPropertyData = async () => {
     <div className="min-h-screen bg-[#060f1e] text-gray-100" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
 
-      {/* Review Modal */}
       {showReviewModal && (
         <WriteReviewModal 
           propertyId={annex._id}
@@ -611,7 +631,6 @@ const fetchPropertyData = async () => {
         />
       )}
 
-      {/* ── Breadcrumb ── */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 pt-4 pb-1 text-xs text-gray-500 flex items-center gap-1.5">
         <a href="#" className="hover:text-gray-300 transition">Home</a>
         <span>›</span>
@@ -622,7 +641,6 @@ const fetchPropertyData = async () => {
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-5">
 
-        {/* ── Photo Gallery ── */}
         <div className="relative rounded-2xl overflow-hidden grid grid-cols-4 grid-rows-2 gap-2 h-[420px]">
           <div className="col-span-2 row-span-2 relative group cursor-pointer" onClick={() => setActiveImg(0)}>
             <img src={displayImages[0]} alt={annex.title} className="w-full h-full object-cover" />
@@ -648,7 +666,6 @@ const fetchPropertyData = async () => {
           ))}
         </div>
 
-        {/* ── Badge Row ── */}
         <div className="flex flex-wrap items-center gap-3 mt-5 mb-1">
           <span className="bg-blue-600/20 text-blue-400 text-xs font-semibold px-3 py-1 rounded-full border border-blue-500/30 uppercase tracking-wider">
             {listingType}
@@ -668,7 +685,6 @@ const fetchPropertyData = async () => {
           </div>
         </div>
 
-        {/* ── Title + Address ── */}
         <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="text-3xl md:text-4xl font-bold text-white leading-tight">
           {annex.title}
         </h1>
@@ -676,13 +692,10 @@ const fetchPropertyData = async () => {
           <span>📍</span> {annex.selectedAddress || 'Address not provided'}
         </p>
 
-        {/* ── Two-column layout ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
 
-          {/* ── LEFT COLUMN ── */}
           <div className="lg:col-span-2 space-y-6">
 
-            {/* Quick Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
                 { icon: '🎓', label: 'LISTING TYPE', value: listingType },
@@ -698,14 +711,12 @@ const fetchPropertyData = async () => {
               ))}
             </div>
 
-            {/* About */}
             <Section title="About this Annex">
               <p className="text-gray-300 leading-7 text-sm">
                 {annex.description || 'No description provided.'}
               </p>
             </Section>
 
-            {/* Amenities */}
             <Section title="Popular Amenities">
               {annex.features?.length > 0 ? (
                 <>
@@ -728,7 +739,6 @@ const fetchPropertyData = async () => {
               )}
             </Section>
 
-            {/* Rules */}
             <Section title="Hostel Rules & Conditions">
               {annex.rulesAndConditions?.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -750,39 +760,7 @@ const fetchPropertyData = async () => {
               )}
             </Section>
 
-            -000{/* Reviews */}
             <Section title="Student Reviews">
-              {/* Quality Score Display */}
-              {quality && (
-                <div className="mb-6 p-4 rounded-xl bg-[#0f1e38]/50 border border-yellow-500/20">
-                  <h3 className="text-white font-semibold mb-3">🏆 Quality Score</h3>
-                  <div className="flex items-center gap-4 mb-4">
-                    <span className="text-4xl font-bold text-yellow-400">{quality.overallScore || 0}</span>
-                    <div className="text-yellow-400 text-xl">
-                      {renderStars(Math.round(quality.overallScore || 0))}
-                    </div>
-                    <span className="text-gray-400 text-sm">({quality.totalReviews || 0} reviews)</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {quality.categoryScores && Object.entries(quality.categoryScores).map(([key, value]) => (
-                      <div key={key}>
-                        <span className="text-gray-400 text-xs capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-2 bg-[#0a0f1a] rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-yellow-400 rounded-full" 
-                              style={{ width: `${(value || 0) * 20}%` }}
-                            />
-                          </div>
-                          <span className="text-yellow-400 text-xs">{value}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <div className="flex flex-col sm:flex-row gap-6 items-start">
                 <div className="text-center shrink-0">
                   <p className="text-6xl font-bold text-white" style={{ fontFamily: "'Syne', sans-serif" }}>
@@ -813,7 +791,6 @@ const fetchPropertyData = async () => {
                 </button>
               </div>
 
-              {/* Reviews List */}
               <div className="mt-5 space-y-5 divide-y divide-[#111e35]">
                 {reviews.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
@@ -825,10 +802,14 @@ const fetchPropertyData = async () => {
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-700 flex items-center justify-center text-sm font-bold">
-                            {review.student?.name?.[0] || 'A'}
+                            {review.student?.firstName?.[0] || review.student?.name?.[0] || 'A'}
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-gray-100">{review.student?.name || 'Anonymous'}</p>
+                            <p className="text-sm font-semibold text-gray-100">
+                              {review.student?.firstName && review.student?.lastName 
+                                ? `${review.student.firstName} ${review.student.lastName}`
+                                : review.student?.email?.split('@')[0] || 'Student'}
+                            </p>
                             <p className="text-xs text-gray-500">{formatDate(review.createdAt)}</p>
                           </div>
                         </div>
@@ -838,6 +819,8 @@ const fetchPropertyData = async () => {
                       </div>
                       <h4 className="text-sm font-semibold text-white mt-2">{review.title}</h4>
                       <p className="text-sm text-gray-400 leading-6 mt-1">"{review.comment}"</p>
+                      
+                      <DetailsRatings ratings={review.ratings} />
                       
                       {review.pros?.length > 0 && review.pros[0] !== '' && (
                         <div className="mt-2 text-xs text-green-400">
@@ -856,7 +839,6 @@ const fetchPropertyData = async () => {
             </Section>
           </div>
 
-          {/* ── RIGHT COLUMN: Sticky Booking Card ── */}
           <div className="lg:col-span-1">
             <div className="sticky top-20 space-y-4">
               <div className="bg-[#0b1628] border border-[#1a2e50] rounded-2xl p-5 shadow-2xl">
@@ -927,7 +909,6 @@ const fetchPropertyData = async () => {
                 </div>
               </div>
 
-              {/* Map Card */}
               <div className="bg-[#0b1628] border border-[#1a2e50] rounded-2xl overflow-hidden">
                 <div className="h-36 bg-[#0a1429] relative flex items-center justify-center">
                   <svg viewBox="0 0 300 150" className="w-full h-full opacity-40">
@@ -951,7 +932,6 @@ const fetchPropertyData = async () => {
                 </div>
               </div>
 
-              {/* Host Card */}
               <div className="bg-[#0b1628] border border-[#1a2e50] rounded-2xl p-4 flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-lg font-bold shrink-0">{ownerInitial}</div>
                 <div>
