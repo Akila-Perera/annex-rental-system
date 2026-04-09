@@ -17,7 +17,7 @@ const Home = () => {
   const [topListings, setTopListings] = useState([]);
   const [loadingTop, setLoadingTop] = useState(true);
   const [mapAnnexes, setMapAnnexes] = useState([]);
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -86,9 +86,9 @@ const Home = () => {
   };
 
   const features = [
-    { icon: '✅', title: 'Verified Listings',  desc: 'Every property is physically visited and verified by our team.' },
-    { icon: '🔐', title: 'Secure Payments',    desc: 'Book with confidence using our secure, escrowed payment system.' },
-    { icon: '🎧', title: 'Student Support',    desc: 'Round the clock support for all your housing queries and issues.' },
+    { icon: '✅', title: 'Verified Listings', desc: 'Every property is physically visited and verified by our team.' },
+    { icon: '🔐', title: 'Secure Payments', desc: 'Book with confidence using our secure, escrowed payment system.' },
+    { icon: '🎧', title: 'Student Support', desc: 'Round the clock support for all your housing queries and issues.' },
   ];
 
   return (

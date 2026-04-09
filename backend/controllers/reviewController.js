@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Review from '../models/Review.js';
 import Booking from '../models/Booking.js';
 import Property from '../models/Annex.js';  // Changed from Property to Annex
+import { calculatePropertyScore } from './qualityController.js';
 
 // @desc    Create a new review (now allows reviews without booking)
 // @route   POST /api/reviews
@@ -150,6 +151,58 @@ export const getPropertyReviews = async (req, res) => {
     });
 
   } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// @desc    Delete a review (user can delete their own)
+// @route   DELETE /api/reviews/:reviewId
+// @access  Private
+export const deleteReview = async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const userId = req.user._id;
+    const userRole = req.user.role;
+
+    const review = await Review.findById(reviewId);
+    
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: 'Review not found'
+      });
+    }
+
+    // Check if user owns the review OR is admin
+    const isAdmin = userRole === 'admin';
+    if (review.student.toString() !== userId.toString() && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only delete your own reviews'
+      });
+    }
+
+    const propertyId = review.property;
+    
+    // Delete the review
+    await Review.findByIdAndDelete(reviewId);
+
+    // Recalculate quality score for the property
+    try {
+      await calculatePropertyScore({ params: { propertyId } }, { json: () => {} });
+    } catch (err) {
+      console.error('Error recalculating quality score:', err);
+    }
+
+    res.json({
+      success: true,
+      message: 'Review deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error in deleteReview:', error);
     res.status(500).json({
       success: false,
       message: error.message
