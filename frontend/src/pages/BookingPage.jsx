@@ -47,6 +47,7 @@ export default function BookingPage() {
   const [errors, setErrors] = useState({});
   const [statusMessage, setStatusMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [requestSubmitted, setRequestSubmitted] = useState(false);
 
   const [currentMonth, setCurrentMonth] = useState(() => {
     const today = new Date();
@@ -111,6 +112,18 @@ export default function BookingPage() {
 
   const isSelectedStart = (iso) => !!moveInDate && iso === moveInDate;
   const isSelectedEnd = (iso) => !!moveOutDate && iso === moveOutDate;
+
+  const handleFullNameChange = (e) => {
+    const lettersOnly = e.target.value.replace(/[^A-Za-z\s]/g, '');
+    setFullName(lettersOnly);
+    setErrors((prev) => ({ ...prev, fullName: undefined }));
+  };
+
+  const handlePhoneChange = (e) => {
+    const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setPhone(digitsOnly);
+    setErrors((prev) => ({ ...prev, phone: undefined }));
+  };
 
   const handleDayClick = (date) => {
     if (!date) return;
@@ -180,11 +193,15 @@ export default function BookingPage() {
     const newErrors = {};
 
     if (!fullName.trim()) newErrors.fullName = 'Full name is required.';
+    else if (!/^[A-Za-z\s]+$/.test(fullName.trim())) {
+      newErrors.fullName = 'Full name must contain only letters.';
+    }
 
     if (!email.trim()) newErrors.email = 'Email is required.';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Enter a valid email.';
 
     if (!phone.trim()) newErrors.phone = 'Phone number is required.';
+    else if (!/^\d{10}$/.test(phone)) newErrors.phone = 'Phone number must be exactly 10 digits.';
 
     if (!moveInDate) newErrors.moveInDate = 'Move-in date is required.';
     if (!moveOutDate) newErrors.moveOutDate = 'Move-out date is required.';
@@ -211,7 +228,7 @@ export default function BookingPage() {
 
     if (!validateForm()) return;
     if (!room.annexId) {
-      setStatusMessage('Unable to create booking: missing annex information.');
+      setStatusMessage('Unable to send booking request: missing annex information.');
       return;
     }
 
@@ -227,12 +244,21 @@ export default function BookingPage() {
       const response = await api.post('/bookings', payload);
 
       if (response.data?.success) {
-        setStatusMessage('Booking created successfully. You can view it in your account and review after completion.');
+        setStatusMessage('✓ Booking request sent successfully! The owner will review your request shortly. You can check the status in your profile.');
+        setRequestSubmitted(true);
+        // Clear form
+        setFullName('');
+        setEmail('');
+        setPhone('');
+        setMoveInDate('');
+        setMoveOutDate('');
+        setNotes('');
+        setErrors({});
       } else {
-        setStatusMessage(response.data?.message || 'Failed to create booking.');
+        setStatusMessage(response.data?.message || 'Failed to send booking request.');
       }
     } catch (error) {
-      const message = error.response?.data?.message || 'Server error while creating booking.';
+      const message = error.response?.data?.message || 'Server error while sending booking request.';
       setStatusMessage(message);
     } finally {
       setSubmitting(false);
@@ -272,7 +298,7 @@ export default function BookingPage() {
                 <input
                   type="text"
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={handleFullNameChange}
                   className="mt-1 w-full rounded-xl border border-[#232E45] bg-[#060F1E] px-3 py-2 text-sm text-gray-100 shadow-sm focus:border-[#3b4f86] focus:outline-none focus:ring-1 focus:ring-[#3b4f86]"
                   placeholder="Enter your full name"
                 />
@@ -299,9 +325,11 @@ export default function BookingPage() {
                   <input
                     type="tel"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={handlePhoneChange}
+                    inputMode="numeric"
+                    maxLength={10}
                     className="mt-1 w-full rounded-xl border border-[#232E45] bg-[#060F1E] px-3 py-2 text-sm text-gray-100 shadow-sm focus:border-[#3b4f86] focus:outline-none focus:ring-1 focus:ring-[#3b4f86]"
-                    placeholder="e.g. +94 77 000 0000"
+                    placeholder="Enter 10-digit phone number"
                   />
                   {errors.phone && (
                     <p className="mt-1 text-xs text-red-400">{errors.phone}</p>
@@ -511,12 +539,14 @@ export default function BookingPage() {
               disabled={submitting}
               className="inline-flex items-center justify-center rounded-xl bg-[#232E45] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#3b4f86] disabled:opacity-60"
             >
-              {submitting ? 'Confirming...' : 'Confirm Booking'}
+              {submitting ? 'Sending Request...' : 'Request Booking'}
             </button>
           </div>
 
           {statusMessage && (
-            <p className="text-xs text-green-400 mt-1">{statusMessage}</p>
+            <div className={`mt-4 p-4 rounded-xl text-sm ${requestSubmitted ? 'bg-green-500/15 border border-green-500/30 text-green-300' : 'bg-red-500/15 border border-red-500/30 text-red-300'}`}>
+              {statusMessage}
+            </div>
           )}
         </div>
 
