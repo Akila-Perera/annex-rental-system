@@ -250,7 +250,7 @@ const WriteReviewModal = ({ propertyId, propertyTitle, onClose, onSuccess }) => 
       const response = await api.post('/reviews', reviewData);
       
       if (response.data.success) {
-        alert('✅ Review submitted successfully!');
+        alert('✅ Review submitted! Waiting for admin approval.');
         if (onSuccess) onSuccess();
         onClose();
       } else {
@@ -443,6 +443,26 @@ export default function AnnexDetailsPage() {
       }
     } catch (qualityError) {
       console.log('Quality API not available');
+    }
+  };
+
+  // DELETE REVIEW FUNCTION
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm('Are you sure you want to delete your review? This cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      const response = await api.delete(`/reviews/${reviewId}`);
+      if (response.data.success) {
+        alert('✅ Review deleted successfully!');
+        fetchPropertyData(); // Refresh the reviews list
+      } else {
+        alert('❌ Failed to delete review');
+      }
+    } catch (error) {
+      console.error('Error deleting review:', error);
+      alert('❌ Failed to delete review');
     }
   };
 
@@ -813,8 +833,20 @@ export default function AnnexDetailsPage() {
                             <p className="text-xs text-gray-500">{formatDate(review.createdAt)}</p>
                           </div>
                         </div>
-                        <div className="text-yellow-400 text-sm">
-                          {renderStars(review.ratings?.overall || 0)}
+                        <div className="flex items-center gap-2">
+                          <div className="text-yellow-400 text-sm">
+                            {renderStars(review.ratings?.overall || 0)}
+                          </div>
+                          {/* Delete button - only show if user owns this review */}
+                          {user && review.student?._id === user.id && (
+                            <button
+                              onClick={() => handleDeleteReview(review._id)}
+                              className="text-red-400 hover:text-red-300 transition text-sm ml-2"
+                              title="Delete your review"
+                            >
+                              🗑️
+                            </button>
+                          )}
                         </div>
                       </div>
                       <h4 className="text-sm font-semibold text-white mt-2">{review.title}</h4>
