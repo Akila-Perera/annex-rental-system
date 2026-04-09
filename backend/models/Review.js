@@ -8,15 +8,13 @@ const reviewSchema = new mongoose.Schema({
   },
   property: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Annex',  // ✅ CHANGED from 'Property' to 'Annex'
+    ref: 'Annex',
     required: true
   },
   booking: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Booking',
-    required: false,
-    unique: true,
-    sparse: true
+    required: false
   },
   ratings: {
     overall: { type: Number, required: true, min: 1, max: 5 },
@@ -82,7 +80,7 @@ const reviewSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for faster queries
+// Indexes for faster queries (NO unique constraint on booking)
 reviewSchema.index({ property: 1, status: 1, createdAt: -1 });
 reviewSchema.index({ student: 1, createdAt: -1 });
 

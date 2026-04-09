@@ -4,6 +4,7 @@ const express       = require('express');
 const cors          = require('cors');
 const path          = require('path');
 const connectDB     = require('./config/db');
+const mongoose      = require('mongoose'); // ✅ ADDED
 const annexRoutes   = require('./routes/annexRoutes');
 const supportRoutes = require('./routes/supportRoutes');
 const authRoutes    = require('./routes/authRoutes');
@@ -11,8 +12,6 @@ const inquiryRoutes = require('./routes/inquiryRoutes');
 const bookingRoutesModule = require('./routes/bookingRoutes');
 const setServers = require('dns').setServers;
 
-// Routes written as ES modules export the router as default.
-// When required from CommonJS we need to unwrap `.default`.
 const reviewRoutesModule  = require('./routes/reviewRoutes');
 const adminRoutesModule   = require('./routes/adminRoutes');
 const qualityRoutesModule = require('./routes/qualityRoutes');
@@ -25,6 +24,8 @@ const bookingRoutes  = bookingRoutesModule.default  || bookingRoutesModule;
 setServers(["1.1.1.1", "8.8.8.8"]);
 
 connectDB();
+
+
 
 const app = express();
 

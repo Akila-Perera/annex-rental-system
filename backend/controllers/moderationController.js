@@ -37,9 +37,9 @@ export const getModerationQueue = async (req, res) => {
         sortOption = { createdAt: -1 };
     }
 
-    // Get reviews with populated fields
+    // Get reviews with populated fields - FIXED: include firstName and lastName
     const reviews = await Review.find(query)
-      .populate('student', 'name email')
+      .populate('student', 'firstName lastName name email')
       .populate('property', 'title location')
       .sort(sortOption)
       .limit(limit * 1)
@@ -93,15 +93,23 @@ export const approveReview = async (req, res) => {
       });
     }
 
-    // Simply update the status
+    // Update status
     review.status = 'approved';
     await review.save();
 
     console.log('Review approved successfully');
 
+    // ✅ Auto-update quality score after approval
+    try {
+      await calculatePropertyScore({ params: { propertyId: review.property } }, { json: () => {} });
+      console.log('Quality score updated for property:', review.property);
+    } catch (scoreError) {
+      console.error('Error updating quality score:', scoreError);
+    }
+
     res.json({
       success: true,
-      message: 'Review approved successfully',
+      message: 'Review approved and quality score updated',
       review
     });
 

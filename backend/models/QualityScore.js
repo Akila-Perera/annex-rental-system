@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const qualityScoreSchema = new mongoose.Schema({
   property: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Property',
+    ref: 'Annex',  // ← CHANGED from 'Property' to 'Annex'
     required: true,
     unique: true
   },
