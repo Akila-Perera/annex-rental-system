@@ -6,7 +6,7 @@ export default function Profile() {
   const { user, token, login, logout } = useAuth();
   const navigate = useNavigate();
 
-  const [mode, setMode] = useState('view'); // 'view' | 'edit'
+  const [mode, setMode] = useState('view');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editData, setEditData] = useState({});
   const [error, setError] = useState('');
@@ -37,6 +37,13 @@ export default function Profile() {
   const [ownerInquiries, setOwnerInquiries] = useState([]);
   const [ownerInquiriesLoading, setOwnerInquiriesLoading] = useState(false);
   const [replyTextByInquiry, setReplyTextByInquiry] = useState({});
+  const [activeChat, setActiveChat] = useState(null);
+  const [sidebarTab, setSidebarTab] = useState('messages');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -80,20 +87,12 @@ export default function Profile() {
     setOwnerBookingsLoading(true);
     try {
       const res = await fetch('http://localhost:5000/api/bookings/owner/dashboard', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (res.ok && data.success) {
         setOwnerBookings(data.bookings || []);
-        setOwnerStats(data.stats || {
-          totalAnnexes: 0,
-          totalBookings: 0,
-          upcomingBookings: 0,
-        });
-      } else {
-        console.error('Error fetching owner bookings:', data.message || 'Unknown error');
+        setOwnerStats(data.stats || { totalAnnexes: 0, totalBookings: 0, upcomingBookings: 0 });
       }
     } catch (fetchError) {
       console.error('Error fetching owner bookings:', fetchError);
@@ -107,9 +106,7 @@ export default function Profile() {
     setPendingRequestsLoading(true);
     try {
       const res = await fetch('http://localhost:5000/api/bookings/owner/pending-requests', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -127,9 +124,7 @@ export default function Profile() {
     setStudentBookingRequestsLoading(true);
     try {
       const res = await fetch('http://localhost:5000/api/bookings', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -173,9 +168,7 @@ export default function Profile() {
     setStudentInquiriesLoading(true);
     try {
       const res = await fetch('http://localhost:5000/api/inquiries/student', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -192,9 +185,7 @@ export default function Profile() {
     setOwnerInquiriesLoading(true);
     try {
       const res = await fetch('http://localhost:5000/api/inquiries/owner', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -303,9 +294,7 @@ export default function Profile() {
     try {
       const res = await fetch(`http://localhost:5000/api/annexes/${annexId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ownerId: user.id,
           ...annexEditData,
@@ -330,16 +319,13 @@ export default function Profile() {
   const deleteAnnex = async (annexId) => {
     const ok = window.confirm('Are you sure you want to delete this annex?');
     if (!ok) return;
-
     setLoading(true);
     setError('');
     setSuccess('');
     try {
       const res = await fetch(`http://localhost:5000/api/annexes/${annexId}`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ownerId: user.id }),
       });
       const data = await res.json();
@@ -359,7 +345,6 @@ export default function Profile() {
   const handleSendReply = async (inquiryId) => {
     const text = replyTextByInquiry[inquiryId]?.trim();
     if (!text) return;
-
     try {
       const res = await fetch(`http://localhost:5000/api/inquiries/${inquiryId}/reply`, {
         method: 'POST',
@@ -372,11 +357,8 @@ export default function Profile() {
       const data = await res.json();
       if (res.ok && data.success) {
         setReplyTextByInquiry((prev) => ({ ...prev, [inquiryId]: '' }));
-        if (isLandlord) {
-          fetchOwnerInquiries();
-        } else {
-          fetchStudentInquiries();
-        }
+        if (isLandlord) fetchOwnerInquiries();
+        else fetchStudentInquiries();
       }
     } catch (err) {
       console.error('Error sending inquiry reply:', err);
@@ -387,593 +369,888 @@ export default function Profile() {
     if (!dateStr) return '—';
     const date = new Date(dateStr);
     if (Number.isNaN(date.getTime())) return '—';
-    return date.toLocaleDateString();
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const formatTime = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
   const latestBooking = ownerBookings && ownerBookings.length > 0 ? ownerBookings[0] : null;
 
+  const inquiries = isLandlord ? ownerInquiries : studentInquiries;
+  const inquiriesLoading = isLandlord ? ownerInquiriesLoading : studentInquiriesLoading;
+
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-[#0a0f1e]">
+    <div className="min-h-screen bg-[#0a0f1e]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+        @keyframes slideInLeft {
+          from { opacity: 0; transform: translateX(-24px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes slideInUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes pulse-dot {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50%       { opacity: 0.5; transform: scale(0.85); }
+        }
+        @keyframes shimmer {
+          0%   { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50%       { transform: translateY(-4px); }
+        }
+        @keyframes glow-pulse {
+          0%, 100% { box-shadow: 0 0 20px rgba(45,126,247,0.2); }
+          50%       { box-shadow: 0 0 40px rgba(45,126,247,0.5); }
+        }
+        @keyframes msg-pop {
+          from { opacity: 0; transform: scale(0.92) translateY(8px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes badge-slide {
+          from { opacity: 0; transform: translateX(-8px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes typing {
+          0%, 60%, 100% { transform: translateY(0); }
+          30%            { transform: translateY(-4px); }
+        }
+
+        .sidebar-animate { animation: slideInLeft 0.5s ease forwards; }
+        .main-animate    { animation: slideInUp 0.6s ease forwards; }
+        .card-animate    { animation: slideInUp 0.5s ease forwards; }
+        .fade-in         { animation: fadeIn 0.4s ease forwards; }
+
+        .online-dot  { animation: pulse-dot 2s ease-in-out infinite; }
+        .float-avatar { animation: float 3s ease-in-out infinite; }
+
+        .shimmer-text {
+          background: linear-gradient(90deg, #2d7ef7 0%, #60a5fa 40%, #2d7ef7 60%, #1d4ed8 100%);
+          background-size: 200% auto;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          animation: shimmer 3s linear infinite;
+        }
+
+        .profile-glow { animation: glow-pulse 3s ease-in-out infinite; }
+        .msg-bubble   { animation: msg-pop 0.3s ease forwards; }
+        .badge-anim   { animation: badge-slide 0.4s ease forwards; }
+
+        .chat-thread::-webkit-scrollbar { width: 4px; }
+        .chat-thread::-webkit-scrollbar-track { background: transparent; }
+        .chat-thread::-webkit-scrollbar-thumb { background: #1f2a3c; border-radius: 99px; }
+
+        .typing-dot:nth-child(1) { animation: typing 1.2s ease-in-out 0s infinite; }
+        .typing-dot:nth-child(2) { animation: typing 1.2s ease-in-out 0.2s infinite; }
+        .typing-dot:nth-child(3) { animation: typing 1.2s ease-in-out 0.4s infinite; }
+
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(45,126,247,0.15); transition: all 0.3s ease; }
+
+        .annex-card:hover { border-color: rgba(45,126,247,0.4) !important; transition: all 0.3s ease; }
+
+        .btn-primary { transition: all 0.2s ease; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(45,126,247,0.3); }
+
+        .home-btn:hover { transform: translateX(-2px); transition: all 0.2s ease; }
+
+        .sidebar-tab.active {
+          background: rgba(45,126,247,0.15);
+          border-color: rgba(45,126,247,0.4);
+          color: #60a5fa;
+        }
+
+        .request-card:hover { background: #0f1d35 !important; }
+      `}</style>
+
       <div className="flex">
 
-        {/* Chat Sidebar */}
-        <aside className="fixed inset-y-0 left-0 h-screen w-[300px] bg-[#111827] border-r border-[#1f2a3c] shadow-2xl flex flex-col p-6 overflow-hidden">
-          <h2 className="text-white text-lg font-semibold mb-1">Chat</h2>
-          <p className="text-gray-400 text-xs mb-3">
-            {isLandlord
-              ? 'Messages from students about your annexes.'
-              : 'Messages between you and annex owners.'}
-          </p>
+        {/* ══════════════════════════════════════════
+            SIDEBAR — Professional Chat Panel
+        ══════════════════════════════════════════ */}
+        <aside className="sidebar-animate fixed inset-y-0 left-0 h-screen w-[300px] bg-[#111827] border-r border-[#1f2a3c] flex flex-col overflow-hidden" style={{ boxShadow: '4px 0 40px rgba(0,0,0,0.4)' }}>
 
-          {isLandlord ? (
-            <>
-              <p className="text-[11px] text-gray-500 uppercase tracking-wide mb-2">Messages</p>
-              {ownerInquiriesLoading && (
-                <p className="text-gray-400 text-sm">Loading messages...</p>
-              )}
-              {!ownerInquiriesLoading && ownerInquiries.length === 0 && (
-                <p className="text-gray-500 text-sm">No inquiries yet.</p>
-              )}
-              {!ownerInquiriesLoading && ownerInquiries.length > 0 && (
-                <div className="mt-1 max-h-[42%] overflow-y-auto space-y-3 pr-1 flex flex-col">
-                  {ownerInquiries.map((inq) => {
-                    const lastMessage = inq.messages[inq.messages.length - 1];
-                    const senderLabel = lastMessage?.senderRole === 'landlord' ? 'You' : 'Student';
-                    return (
-                      <div
-                        key={inq._id}
-                        className="bg-[#0d1526] border border-[#1f2a3c] rounded-xl p-3 text-xs text-gray-200"
-                      >
-                        <p className="text-white font-semibold text-[11px] mb-1 truncate">
-                          {inq.annex?.title || 'Annex'}
-                        </p>
-                        <p className="text-gray-400 mb-0.5">
-                          From{' '}
-                          <span className="font-semibold">
-                            {inq.student?.firstName} {inq.student?.lastName}
-                          </span>
-                        </p>
-                        <p className="text-gray-400 mb-1">
-                          Latest from <span className="font-semibold">{senderLabel}</span>: {lastMessage?.text}
-                        </p>
-                        <div className="mt-1 flex gap-2">
-                          <input
-                            type="text"
-                            value={replyTextByInquiry[inq._id] || ''}
-                            onChange={(e) =>
-                              setReplyTextByInquiry((prev) => ({ ...prev, [inq._id]: e.target.value }))
-                            }
-                            placeholder="Reply to this inquiry..."
-                            className="flex-1 bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-2 py-1 text-[11px]"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleSendReply(inq._id)}
-                            className="px-3 py-1 rounded-lg bg-blue-600 text-white text-[11px] font-semibold"
-                          >
-                            Send
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+          {/* Sidebar Header */}
+          <div className="flex-shrink-0 px-5 pt-5 pb-4 border-b border-[#1f2a3c]">
+
+            {/* Home Button */}
+            <button
+              onClick={() => navigate('/')}
+              className="home-btn flex items-center gap-2 mb-4 text-[#5a6478] hover:text-blue-400 text-xs font-medium group"
+            >
+              <span className="w-7 h-7 rounded-lg bg-[#0d1526] border border-[#1f2a3c] flex items-center justify-center group-hover:border-blue-500/40 group-hover:bg-blue-500/10 transition-all duration-200">
+                ←
+              </span>
+              Back to Home
+            </button>
+
+            {/* Mini Profile in Sidebar */}
+            <div className="flex items-center gap-3">
+              <div className="relative flex-shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white text-sm font-bold select-none" style={{ boxShadow: '0 0 0 2px #1f2a3c, 0 0 0 4px rgba(45,126,247,0.3)' }}>
+                  {user.firstName?.[0]?.toUpperCase()}{user.lastName?.[0]?.toUpperCase()}
                 </div>
-              )}
+                <span className="online-dot absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-400 border-2 border-[#111827]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-semibold truncate">{user.firstName} {user.lastName}</p>
+                <p className="text-[#5a6478] text-[10px]">{isLandlord ? '🏠 Annex Owner' : '🎓 Student'} · Online</p>
+              </div>
+            </div>
+          </div>
 
-              <div className="mt-4 pt-3 border-t border-[#1f2a3c] flex-1 min-h-0 flex flex-col">
-                <p className="text-[11px] text-gray-500 uppercase tracking-wide mb-2">
-                  Pending Booking Requests
+          {/* Sidebar Tabs */}
+          <div className="flex-shrink-0 px-4 py-3 border-b border-[#1f2a3c]">
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => setSidebarTab('messages')}
+                className={`sidebar-tab flex-1 px-3 py-2 rounded-lg text-[11px] font-semibold border transition-all duration-200 ${sidebarTab === 'messages' ? 'active' : 'border-transparent text-[#5a6478] hover:text-gray-300 hover:bg-white/5'}`}
+              >
+                💬 Messages
+                {inquiries.length > 0 && (
+                  <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-blue-600 text-white text-[9px] font-bold">{inquiries.length}</span>
+                )}
+              </button>
+              <button
+                onClick={() => setSidebarTab('requests')}
+                className={`sidebar-tab flex-1 px-3 py-2 rounded-lg text-[11px] font-semibold border transition-all duration-200 ${sidebarTab === 'requests' ? 'active' : 'border-transparent text-[#5a6478] hover:text-gray-300 hover:bg-white/5'}`}
+              >
+                {isLandlord ? '📋 Requests' : '🏠 Bookings'}
+                {(isLandlord ? pendingRequests : studentBookingRequests).length > 0 && (
+                  <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-bold">
+                    {(isLandlord ? pendingRequests : studentBookingRequests).length}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto chat-thread">
+
+            {/* ── MESSAGES TAB ── */}
+            {sidebarTab === 'messages' && (
+              <div className="p-3">
+                <p className="text-[10px] text-[#3a4a5c] uppercase tracking-[0.1em] font-semibold px-2 mb-3">
+                  {isLandlord ? 'Student Inquiries' : 'Your Conversations'}
                 </p>
-                {pendingRequestsLoading && (
-                  <p className="text-gray-400 text-sm">Loading requests...</p>
-                )}
-                {!pendingRequestsLoading && pendingRequests.length === 0 && (
-                  <p className="text-gray-500 text-sm">No pending requests.</p>
-                )}
-                {!pendingRequestsLoading && pendingRequests.length > 0 && (
-                  <div className="space-y-2 flex-1 min-h-0 overflow-y-auto pr-1">
-                    {pendingRequests.map((request) => (
-                      <div
-                        key={request._id}
-                        className="bg-[#0d1526] border border-[#1f2a3c] rounded-xl p-2 text-xs text-gray-200"
-                      >
-                        <p className="text-white font-semibold text-[11px] truncate">
-                          {request.student?.firstName} {request.student?.lastName}
-                        </p>
-                        <p className="text-gray-400 text-[10px] truncate">{request.annex?.title || 'Annex'}</p>
-                        <p className="text-gray-500 text-[10px] mb-1">
-                          {formatDate(request.checkInDate)} to {formatDate(request.checkOutDate)}
-                        </p>
-                        <div className="flex gap-1">
-                          <button
-                            type="button"
-                            disabled={loading}
-                            onClick={() => handleRespondToRequest(request._id, 'accepted')}
-                            className="flex-1 px-2 py-1 rounded bg-green-600 text-white text-[10px] font-semibold disabled:opacity-50"
-                          >
-                            Accept
-                          </button>
-                          <button
-                            type="button"
-                            disabled={loading}
-                            onClick={() => handleRespondToRequest(request._id, 'rejected')}
-                            className="flex-1 px-2 py-1 rounded bg-red-600 text-white text-[10px] font-semibold disabled:opacity-50"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      </div>
+
+                {inquiriesLoading && (
+                  <div className="flex flex-col gap-2 px-2">
+                    {[1,2,3].map(i => (
+                      <div key={i} className="h-16 rounded-xl bg-[#0d1526] animate-pulse" />
                     ))}
                   </div>
                 )}
-              </div>
-            </>
-          ) : (
-            <>
-              {studentInquiriesLoading && (
-                <p className="text-gray-400 text-sm">Loading your messages...</p>
-              )}
-              {!studentInquiriesLoading && studentInquiries.length === 0 && (
-                <p className="text-gray-500 text-sm">You haven&apos;t sent any inquiries yet.</p>
-              )}
-              {!studentInquiriesLoading && studentInquiries.length > 0 && (
-                <div className="mt-1 max-h-[40%] overflow-y-auto space-y-3 pr-1 flex flex-col">
-                  {studentInquiries.map((inq) => {
-                    const lastMessage = inq.messages[inq.messages.length - 1];
-                    const senderLabel = lastMessage?.senderRole === 'landlord' ? 'Owner' : 'You';
-                    return (
-                      <div
-                        key={inq._id}
-                        className="bg-[#0d1526] border border-[#1f2a3c] rounded-xl p-3 text-xs text-gray-200"
-                      >
-                        <p className="text-white font-semibold text-[11px] mb-1 truncate">
-                          {inq.annex?.title || 'Annex'}
-                        </p>
-                        <p className="text-gray-400 mb-1">
-                          Latest from <span className="font-semibold">{senderLabel}</span>: {lastMessage?.text}
-                        </p>
-                        <div className="mt-1 flex gap-2">
-                          <input
-                            type="text"
-                            value={replyTextByInquiry[inq._id] || ''}
-                            onChange={(e) =>
-                              setReplyTextByInquiry((prev) => ({ ...prev, [inq._id]: e.target.value }))
-                            }
-                            placeholder="Reply to this thread..."
-                            className="flex-1 bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-2 py-1 text-[11px]"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleSendReply(inq._id)}
-                            className="px-3 py-1 rounded-lg bg-blue-600 text-white text-[11px] font-semibold"
-                          >
-                            Send
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
 
-              <div className="mt-4 pt-3 border-t border-[#1f2a3c] flex-1 min-h-0 flex flex-col">
-                <p className="text-[11px] text-gray-500 uppercase tracking-wide mb-2">Your Booking Requests</p>
-                {studentBookingRequestsLoading && (
-                  <p className="text-gray-400 text-sm">Loading booking requests...</p>
+                {!inquiriesLoading && inquiries.length === 0 && (
+                  <div className="text-center py-10 px-4">
+                    <div className="text-3xl mb-3">💬</div>
+                    <p className="text-gray-400 text-xs font-medium">No conversations yet</p>
+                    <p className="text-[#3a4a5c] text-[10px] mt-1 leading-relaxed">
+                      {isLandlord ? 'Students will reach out about your annexes here.' : 'Start by inquiring about an annex you like.'}
+                    </p>
+                  </div>
                 )}
-                {!studentBookingRequestsLoading && studentBookingRequests.length === 0 && (
-                  <p className="text-gray-500 text-sm">No booking requests yet.</p>
-                )}
-                {!studentBookingRequestsLoading && studentBookingRequests.length > 0 && (
-                  <div className="space-y-2 flex-1 min-h-0 overflow-y-auto pr-1">
-                    {studentBookingRequests.map((request) => {
-                      const statusLabel =
-                        request.status === 'confirmed'
-                          ? 'Accepted'
-                          : request.status === 'cancelled'
-                            ? 'Rejected'
-                            : 'Pending';
-                      const statusClass =
-                        request.status === 'confirmed'
-                          ? 'text-green-400'
-                          : request.status === 'cancelled'
-                            ? 'text-red-400'
-                            : 'text-yellow-400';
-                      const ownerMessage =
-                        request.status === 'confirmed'
-                          ? 'Owner accepted your booking request.'
-                          : request.status === 'cancelled'
-                            ? 'Owner rejected your booking request.'
-                            : 'Request sent. Waiting for owner approval.';
+
+                {!inquiriesLoading && inquiries.length > 0 && (
+                  <div className="flex flex-col gap-1">
+                    {inquiries.map((inq) => {
+                      const lastMessage = inq.messages[inq.messages.length - 1];
+                      const isYou = isLandlord ? lastMessage?.senderRole === 'landlord' : lastMessage?.senderRole === 'student';
+                      const isActive = activeChat === inq._id;
+                      const otherName = isLandlord
+                        ? `${inq.student?.firstName} ${inq.student?.lastName}`
+                        : 'Owner';
+                      const initials = isLandlord
+                        ? `${inq.student?.firstName?.[0] || ''}${inq.student?.lastName?.[0] || ''}`
+                        : 'OW';
 
                       return (
-                        <div
-                          key={request._id}
-                          className="bg-[#0d1526] border border-[#1f2a3c] rounded-xl p-2 text-xs text-gray-200"
-                        >
-                          <p className="text-white font-semibold text-[11px] truncate">
-                            {request.annex?.title || 'Annex'}
-                          </p>
-                          <p className="text-gray-500 text-[10px]">
-                            {formatDate(request.checkInDate)} to {formatDate(request.checkOutDate)}
-                          </p>
-                          <p className={`text-[10px] font-semibold ${statusClass}`}>Status: {statusLabel}</p>
-                          <p className="text-[10px] text-gray-400 mt-0.5">{ownerMessage}</p>
+                        <div key={inq._id}>
+                          {/* Conversation Row */}
+                          <button
+                            onClick={() => setActiveChat(isActive ? null : inq._id)}
+                            className="w-full text-left px-3 py-3 rounded-xl hover:bg-[#0d1526] transition-all duration-200 group"
+                            style={isActive ? { background: 'rgba(45,126,247,0.08)', border: '1px solid rgba(45,126,247,0.2)' } : { border: '1px solid transparent' }}
+                          >
+                            <div className="flex items-start gap-2.5">
+                              <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center text-white text-[10px] font-bold">
+                                {initials}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <p className="text-white text-[11px] font-semibold truncate">{otherName}</p>
+                                  <p className="text-[#3a4a5c] text-[9px] flex-shrink-0 ml-2">{formatTime(lastMessage?.createdAt)}</p>
+                                </div>
+                                <p className="text-[#3a4a5c] text-[10px] truncate">{inq.annex?.title || 'Annex'}</p>
+                                <p className="text-[#5a6478] text-[10px] truncate mt-0.5">
+                                  {isYou ? <span className="text-blue-400">You: </span> : ''}
+                                  {lastMessage?.text}
+                                </p>
+                              </div>
+                            </div>
+                          </button>
+
+                          {/* Expanded Chat Thread */}
+                          {isActive && (
+                            <div className="mx-2 mb-2 rounded-xl bg-[#0d1526] border border-[#1a2540] overflow-hidden msg-bubble">
+                              {/* Thread Header */}
+                              <div className="px-3 py-2.5 border-b border-[#1f2a3c] bg-[#0a1020]">
+                                <p className="text-white text-[11px] font-semibold">{inq.annex?.title || 'Annex'}</p>
+                                <p className="text-[#3a4a5c] text-[9px] mt-0.5">Conversation thread</p>
+                              </div>
+
+                              {/* Messages */}
+                              <div className="p-3 max-h-48 overflow-y-auto chat-thread flex flex-col gap-2">
+                                {inq.messages.map((msg, idx) => {
+                                  const isMine = isLandlord ? msg.senderRole === 'landlord' : msg.senderRole === 'student';
+                                  return (
+                                    <div key={idx} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                                      <div
+                                        className={`max-w-[80%] px-3 py-2 rounded-xl text-[10px] leading-relaxed ${
+                                          isMine
+                                            ? 'bg-blue-600 text-white rounded-br-sm'
+                                            : 'bg-[#111827] border border-[#1f2a3c] text-gray-300 rounded-bl-sm'
+                                        }`}
+                                      >
+                                        {msg.text}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Reply Input */}
+                              <div className="px-3 pb-3">
+                                <div className="flex gap-2 mt-1">
+                                  <input
+                                    type="text"
+                                    value={replyTextByInquiry[inq._id] || ''}
+                                    onChange={(e) =>
+                                      setReplyTextByInquiry((prev) => ({ ...prev, [inq._id]: e.target.value }))
+                                    }
+                                    onKeyDown={(e) => { if (e.key === 'Enter') handleSendReply(inq._id); }}
+                                    placeholder="Type a message..."
+                                    className="flex-1 bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-3 py-2 text-[10px] focus:outline-none focus:border-blue-500/60 transition-colors placeholder:text-[#3a4a5c]"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSendReply(inq._id)}
+                                    className="w-8 h-8 rounded-lg bg-blue-600 hover:bg-blue-500 flex items-center justify-center text-white text-xs transition-colors flex-shrink-0"
+                                  >
+                                    ↑
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
                   </div>
                 )}
               </div>
-            </>
-          )}
+            )}
+
+            {/* ── REQUESTS / BOOKINGS TAB ── */}
+            {sidebarTab === 'requests' && (
+              <div className="p-3">
+                {isLandlord ? (
+                  <>
+                    <p className="text-[10px] text-[#3a4a5c] uppercase tracking-[0.1em] font-semibold px-2 mb-3">
+                      Pending Approvals
+                    </p>
+
+                    {pendingRequestsLoading && (
+                      <div className="flex flex-col gap-2 px-2">
+                        {[1,2].map(i => <div key={i} className="h-20 rounded-xl bg-[#0d1526] animate-pulse" />)}
+                      </div>
+                    )}
+
+                    {!pendingRequestsLoading && pendingRequests.length === 0 && (
+                      <div className="text-center py-10 px-4">
+                        <div className="text-3xl mb-3">✅</div>
+                        <p className="text-gray-400 text-xs font-medium">All clear!</p>
+                        <p className="text-[#3a4a5c] text-[10px] mt-1">No pending booking requests right now.</p>
+                      </div>
+                    )}
+
+                    {!pendingRequestsLoading && pendingRequests.length > 0 && (
+                      <div className="flex flex-col gap-2">
+                        {pendingRequests.map((request) => (
+                          <div
+                            key={request._id}
+                            className="request-card bg-[#0d1526] border border-[#1f2a3c] rounded-xl p-3 transition-colors duration-200"
+                          >
+                            <div className="flex items-start gap-2 mb-2">
+                              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                                {request.student?.firstName?.[0]}{request.student?.lastName?.[0]}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-white text-[11px] font-semibold truncate">
+                                  {request.student?.firstName} {request.student?.lastName}
+                                </p>
+                                <p className="text-[#5a6478] text-[9px] truncate">{request.annex?.title || 'Annex'}</p>
+                              </div>
+                              <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-[9px] font-semibold">
+                                Pending
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 mb-2.5 px-2 py-1.5 rounded-lg bg-[#0a1020] border border-[#1f2a3c]">
+                              <span className="text-[10px]">📅</span>
+                              <p className="text-[#8a96b0] text-[9px]">
+                                {formatDate(request.checkInDate)} → {formatDate(request.checkOutDate)}
+                              </p>
+                            </div>
+                            <div className="flex gap-1.5">
+                              <button
+                                type="button"
+                                disabled={loading}
+                                onClick={() => handleRespondToRequest(request._id, 'accepted')}
+                                className="flex-1 py-1.5 rounded-lg bg-green-600/20 border border-green-500/40 text-green-400 text-[10px] font-semibold hover:bg-green-600 hover:text-white transition-all duration-200 disabled:opacity-50"
+                              >
+                                ✓ Accept
+                              </button>
+                              <button
+                                type="button"
+                                disabled={loading}
+                                onClick={() => handleRespondToRequest(request._id, 'rejected')}
+                                className="flex-1 py-1.5 rounded-lg bg-red-600/20 border border-red-500/40 text-red-400 text-[10px] font-semibold hover:bg-red-600 hover:text-white transition-all duration-200 disabled:opacity-50"
+                              >
+                                ✕ Reject
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[10px] text-[#3a4a5c] uppercase tracking-[0.1em] font-semibold px-2 mb-3">
+                      Your Booking Status
+                    </p>
+
+                    {studentBookingRequestsLoading && (
+                      <div className="flex flex-col gap-2 px-2">
+                        {[1,2].map(i => <div key={i} className="h-20 rounded-xl bg-[#0d1526] animate-pulse" />)}
+                      </div>
+                    )}
+
+                    {!studentBookingRequestsLoading && studentBookingRequests.length === 0 && (
+                      <div className="text-center py-10 px-4">
+                        <div className="text-3xl mb-3">🏠</div>
+                        <p className="text-gray-400 text-xs font-medium">No bookings yet</p>
+                        <p className="text-[#3a4a5c] text-[10px] mt-1 leading-relaxed">Browse annexes and submit a booking request to get started.</p>
+                        <button onClick={() => navigate('/searchAnnex')} className="mt-3 px-4 py-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 text-[10px] font-semibold hover:bg-blue-600 hover:text-white transition-all duration-200">
+                          Browse Annexes →
+                        </button>
+                      </div>
+                    )}
+
+                    {!studentBookingRequestsLoading && studentBookingRequests.length > 0 && (
+                      <div className="flex flex-col gap-2">
+                        {studentBookingRequests.map((request) => {
+                          const statusConfig = {
+                            confirmed: { label: 'Accepted', cls: 'text-green-400 bg-green-500/15 border-green-500/30', icon: '✓', msg: 'Owner accepted your request.' },
+                            cancelled: { label: 'Rejected', cls: 'text-red-400 bg-red-500/15 border-red-500/30', icon: '✕', msg: 'Owner declined your request.' },
+                            pending:   { label: 'Pending',  cls: 'text-amber-400 bg-amber-500/15 border-amber-500/30', icon: '⏳', msg: 'Awaiting owner approval.' },
+                          };
+                          const s = statusConfig[request.status] || statusConfig.pending;
+
+                          return (
+                            <div key={request._id} className="bg-[#0d1526] border border-[#1f2a3c] rounded-xl p-3">
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-white text-[11px] font-semibold truncate">{request.annex?.title || 'Annex'}</p>
+                                  <p className="text-[#5a6478] text-[9px] mt-0.5">
+                                    {formatDate(request.checkInDate)} → {formatDate(request.checkOutDate)}
+                                  </p>
+                                </div>
+                                <span className={`flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-bold ${s.cls}`}>
+                                  {s.icon} {s.label}
+                                </span>
+                              </div>
+                              <div className="px-2.5 py-1.5 rounded-lg bg-[#0a1020] border border-[#1f2a3c]">
+                                <p className="text-[#8a96b0] text-[9px]">{s.msg}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+          </div>
+
+          {/* Sidebar Footer */}
+          <div className="flex-shrink-0 px-4 py-3 border-t border-[#1f2a3c]">
+            <div className="flex items-center gap-2 text-[10px] text-[#3a4a5c]">
+              <span className="online-dot w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
+              <span>All systems operational</span>
+            </div>
+          </div>
         </aside>
 
-        {/* Main content shifted right of sidebar */}
-        <main className="flex-1 ml-[300px] px-4 py-12">
+        {/* ══════════════════════════════════════════
+            MAIN CONTENT
+        ══════════════════════════════════════════ */}
+        <main className="flex-1 ml-[300px] px-6 py-10">
           <div className="max-w-2xl mx-auto">
 
-        {/* Profile Card */}
-        <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-8 shadow-2xl mb-6">
-
-          {/* Avatar + Name + Edit/Delete buttons */}
-          <div className="flex items-start justify-between mb-8">
-            <div className="flex items-center gap-5">
-              <div className="w-20 h-20 rounded-2xl bg-blue-600 flex items-center justify-center text-white text-3xl font-bold select-none">
-                {user.firstName?.[0]?.toUpperCase()}{user.lastName?.[0]?.toUpperCase()}
-              </div>
-              <div>
-                <h1 className="text-white text-2xl font-bold">{user.firstName} {user.lastName}</h1>
-                <span className={`text-xs font-semibold px-3 py-1 rounded-full mt-1 inline-block ${
-                  isLandlord
-                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                    : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                }`}>
+            {/* ── Page Header ── */}
+            <div className="main-animate mb-7" style={{ animationDelay: '0.1s' }}>
+              <div className="flex items-center gap-3 mb-1">
+                <h1 className="text-[#f0f4ff] text-2xl font-bold" style={{ fontFamily: "'Syne', sans-serif" }}>
+                  My Profile
+                </h1>
+                <span className="badge-anim px-2.5 py-1 rounded-full text-[10px] font-bold border"
+                  style={isLandlord
+                    ? { background: 'rgba(245,158,11,0.12)', borderColor: 'rgba(245,158,11,0.3)', color: '#fbbf24' }
+                    : { background: 'rgba(45,126,247,0.12)', borderColor: 'rgba(45,126,247,0.3)', color: '#60a5fa' }
+                  }>
                   {isLandlord ? '🏠 Annex Owner' : '🎓 Student'}
                 </span>
               </div>
-            </div>
-
-            {mode === 'view' && (
-              <div className="flex gap-2">
-                <button
-                  onClick={startEdit}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600/15 border border-blue-500/30 text-blue-400 hover:bg-blue-600/25 hover:text-blue-300 text-sm font-medium transition-all"
-                >
-                  ✏️ Edit
-                </button>
-                <button
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 hover:text-red-300 text-sm font-medium transition-all"
-                >
-                  🗑️ Delete
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Feedback */}
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-5">{error}</div>
-          )}
-          {success && (
-            <div className="bg-green-500/10 border border-green-500/30 text-green-400 text-sm rounded-lg px-4 py-3 mb-5">{success}</div>
-          )}
-
-          {/* VIEW mode */}
-          {mode === 'view' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <ProfileField label="First Name"   value={user.firstName} />
-              <ProfileField label="Last Name"    value={user.lastName} />
-              <ProfileField label="Gender"       value={user.gender} />
-              <ProfileField label="Email"        value={user.email} />
-              <ProfileField label="Phone"        value={user.phone} />
-              <ProfileField label="Account Type" value={isLandlord ? 'Annex Owner' : 'Student'} />
-            </div>
-          )}
-
-          {/* EDIT mode */}
-          {mode === 'edit' && (
-            <div className="space-y-4">
-              <p className="text-gray-400 text-sm mb-2">Update your name, gender, and phone. Email and account type cannot be changed.</p>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-gray-300 text-xs font-medium uppercase tracking-wider mb-1.5 block">First Name</label>
-                  <input type="text" value={editData.firstName}
-                    onChange={e => setEditData({ ...editData, firstName: e.target.value })}
-                    className="w-full bg-[#0d1526] border border-[#1f2a3c] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition-colors" />
-                </div>
-                <div>
-                  <label className="text-gray-300 text-xs font-medium uppercase tracking-wider mb-1.5 block">Last Name</label>
-                  <input type="text" value={editData.lastName}
-                    onChange={e => setEditData({ ...editData, lastName: e.target.value })}
-                    className="w-full bg-[#0d1526] border border-[#1f2a3c] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition-colors" />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-gray-300 text-xs font-medium uppercase tracking-wider mb-1.5 block">Gender</label>
-                <select value={editData.gender} onChange={e => setEditData({ ...editData, gender: e.target.value })}
-                  className="w-full bg-[#0d1526] border border-[#1f2a3c] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition-colors appearance-none">
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                  <option value="Prefer not to say">Prefer not to say</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-gray-300 text-xs font-medium uppercase tracking-wider mb-1.5 block">Phone Number</label>
-                <input type="tel" value={editData.phone}
-                  onChange={e => setEditData({ ...editData, phone: e.target.value })}
-                  className="w-full bg-[#0d1526] border border-[#1f2a3c] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition-colors" />
-              </div>
-
-              {/* Locked fields */}
-              <div className="grid grid-cols-2 gap-4 opacity-50">
-                <div>
-                  <label className="text-gray-300 text-xs font-medium uppercase tracking-wider mb-1.5 block">Email (locked)</label>
-                  <input type="email" value={user.email} disabled
-                    className="w-full bg-[#0d1526] border border-[#1f2a3c] text-gray-500 rounded-xl px-4 py-3 text-sm cursor-not-allowed" />
-                </div>
-                <div>
-                  <label className="text-gray-300 text-xs font-medium uppercase tracking-wider mb-1.5 block">Account Type (locked)</label>
-                  <input type="text" value={isLandlord ? 'Annex Owner' : 'Student'} disabled
-                    className="w-full bg-[#0d1526] border border-[#1f2a3c] text-gray-500 rounded-xl px-4 py-3 text-sm cursor-not-allowed" />
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button onClick={cancelEdit}
-                  className="flex-1 bg-transparent border border-[#1f2a3c] text-gray-300 hover:text-white hover:border-gray-500 rounded-xl py-3 text-sm font-medium transition-all">
-                  Cancel
-                </button>
-                <button onClick={handleSave} disabled={loading}
-                  className="flex-1 bg-blue-600 hover:bg-blue-500 text-white rounded-xl py-3 text-sm font-semibold transition-all disabled:opacity-50">
-                  {loading ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Landlord Dashboard */}
-        {isLandlord && (
-          <div className="space-y-6 mb-6">
-            {/* Top row: Highlight booking + stats */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Highlight latest booking */}
-              <div className="lg:col-span-2 bg-gradient-to-br from-[#111827] via-[#111827] to-[#1e293b] border border-[#1f2a3c] rounded-2xl p-6 shadow-2xl">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h2 className="text-white text-lg font-semibold">Confirmed Booking</h2>
-                    <p className="text-gray-400 text-xs mt-1">Latest student booking across your annexes.</p>
-                  </div>
-                </div>
-
-                {ownerBookingsLoading && (
-                  <p className="text-gray-400 text-sm">Loading bookings...</p>
-                )}
-
-                {!ownerBookingsLoading && latestBooking && (
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Student</p>
-                      <p className="text-white font-medium text-sm">
-                        {latestBooking.student?.firstName} {latestBooking.student?.lastName}
-                      </p>
-                      <p className="text-gray-400 text-xs mt-0.5">{latestBooking.student?.email}</p>
-                      {latestBooking.student?.phone && (
-                        <p className="text-gray-400 text-xs">{latestBooking.student.phone}</p>
-                      )}
-                    </div>
-
-                    <div className="hidden sm:block h-12 w-px bg-[#1f2a3c]" />
-
-                    <div className="flex-1 flex flex-col sm:items-center">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Annex</p>
-                      <p className="text-white text-sm font-medium text-center">
-                        {latestBooking.annex?.title || 'Annex'}
-                      </p>
-                      {latestBooking.annex?.selectedAddress && (
-                        <p className="text-gray-400 text-xs text-center mt-0.5">
-                          {latestBooking.annex.selectedAddress}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="hidden sm:block h-12 w-px bg-[#1f2a3c]" />
-
-                    <div className="text-right space-y-1">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Period</p>
-                      <p className="text-white text-sm font-medium">
-                        {formatDate(latestBooking.checkInDate)}
-                        <span className="text-gray-400 mx-1 text-xs">to</span>
-                        {formatDate(latestBooking.checkOutDate)}
-                      </p>
-                      <p className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-500/15 border border-green-500/40 text-green-300 text-xs font-semibold mt-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>
-                        {latestBooking.status?.charAt(0).toUpperCase() + latestBooking.status?.slice(1) || 'Confirmed'}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {!ownerBookingsLoading && !latestBooking && (
-                  <div className="border border-dashed border-[#1f2a3c] rounded-xl p-4 text-center">
-                    <p className="text-gray-300 text-sm font-medium mb-1">No bookings yet</p>
-                    <p className="text-gray-500 text-xs">
-                      Once students start booking your annexes, you&apos;ll see the latest one highlighted here.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Stats column */}
-              <div className="space-y-4">
-                <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-4">
-                  <p className="text-gray-400 text-xs mb-1">Total Annexes</p>
-                  <p className="text-white text-2xl font-bold">{ownerStats.totalAnnexes}</p>
-                </div>
-                <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-4">
-                  <p className="text-gray-400 text-xs mb-1">All-time Bookings</p>
-                  <p className="text-white text-2xl font-bold">{ownerStats.totalBookings}</p>
-                </div>
-                <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-4">
-                  <p className="text-gray-400 text-xs mb-1">Upcoming / Active</p>
-                  <p className="text-white text-2xl font-bold">{ownerStats.upcomingBookings}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Manage Listings */}
-            <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-6 shadow-2xl">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                <div>
-                  <h2 className="text-white text-lg font-semibold">Your Annex Portfolio</h2>
-                  <p className="text-gray-400 text-xs mt-1">Edit details, update pricing, or remove listings.</p>
-                </div>
-                <Link
-                  to="/addAnnex"
-                  className="inline-flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-xl text-sm font-medium transition-all"
-                >
-                  ➕ Add New Annex
-                </Link>
-              </div>
-
-              {annexLoading && (
-                <p className="text-gray-400 text-sm">Loading your annexes...</p>
-              )}
-
-              {!annexLoading && ownerAnnexes.length === 0 && (
-                <p className="text-gray-500 text-sm">You have not added any annexes yet.</p>
-              )}
-
-              {!annexLoading && ownerAnnexes.length > 0 && (
-                <div className="space-y-3">
-                  {ownerAnnexes.map((annex) => (
-                    <div
-                      key={annex._id}
-                      className="bg-[#0d1526] border border-[#1f2a3c] rounded-xl p-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
-                    >
-                      {editingAnnexId === annex._id ? (
-                        <div className="flex-1 space-y-3">
-                          <input
-                            type="text"
-                            value={annexEditData.title}
-                            onChange={(e) => setAnnexEditData({ ...annexEditData, title: e.target.value })}
-                            className="w-full bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-3 py-2 text-sm"
-                          />
-                          <input
-                            type="number"
-                            value={annexEditData.price}
-                            onChange={(e) => setAnnexEditData({ ...annexEditData, price: e.target.value })}
-                            className="w-full bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-3 py-2 text-sm"
-                          />
-                          <select
-                            value={annexEditData.preferredGender}
-                            onChange={(e) => setAnnexEditData({ ...annexEditData, preferredGender: e.target.value })}
-                            className="w-full bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-3 py-2 text-sm"
-                          >
-                            <option value="Any">Any</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                          </select>
-                          <textarea
-                            value={annexEditData.description}
-                            onChange={(e) => setAnnexEditData({ ...annexEditData, description: e.target.value })}
-                            rows={3}
-                            className="w-full bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-3 py-2 text-sm"
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => saveAnnexEdit(annex._id)}
-                              disabled={loading}
-                              className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={cancelAnnexEdit}
-                              className="px-3 py-1.5 rounded-lg border border-[#334155] text-gray-300 text-xs font-semibold"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex-1">
-                            <p className="text-white font-semibold">{annex.title}</p>
-                            <p className="text-blue-400 text-sm mt-1">Rs. {annex.price} / month</p>
-                            {annex.selectedAddress && (
-                              <p className="text-gray-400 text-xs mt-1">{annex.selectedAddress}</p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => startAnnexEdit(annex)}
-                              className="px-3 py-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-300 text-xs font-semibold"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => deleteAnnex(annex._id)}
-                              className="px-3 py-1.5 rounded-lg bg-red-600/20 border border-red-500/30 text-red-300 text-xs font-semibold"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-          </div>
-        )}
-
-        {/* Student: Quick Info + Messages */}
-        {!isLandlord && (
-          <>
-            <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-6 shadow-2xl mb-6">
-              <h2 className="text-white text-lg font-semibold mb-2">Your Housing Search</h2>
-              <p className="text-gray-400 text-sm">
-                Browse verified annexes near your university from the{' '}
-                <span onClick={() => navigate('/')} className="text-blue-400 cursor-pointer hover:underline">Home page</span>.
+              <p className="text-[#5a6478] text-sm">
+                {isLandlord
+                  ? 'Manage your listings, bookings, and account settings from one place.'
+                  : 'View and update your student profile, track bookings, and connect with owners.'}
               </p>
             </div>
 
-          </>
-        )}
+            {/* ── Profile Card ── */}
+            <div className="card-animate bg-[#111827] border border-[#1f2a3c] rounded-2xl p-7 shadow-2xl mb-5" style={{ animationDelay: '0.2s' }}>
 
-        {/* Log Out */}
-        <button onClick={handleLogout}
-          className="w-full border border-red-500/30 text-red-400 hover:bg-red-500/10 rounded-xl py-3 text-sm font-medium transition-all">
-          Log Out
-        </button>
-      </div>
+              {/* Avatar + Info + Actions */}
+              <div className="flex items-start justify-between mb-7">
+                <div className="flex items-center gap-5">
+                  <div className="relative">
+                    <div
+                      className="float-avatar w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-2xl font-bold select-none profile-glow"
+                      style={{ fontFamily: "'Syne', sans-serif" }}
+                    >
+                      {user.firstName?.[0]?.toUpperCase()}{user.lastName?.[0]?.toUpperCase()}
+                    </div>
+                    <span className="online-dot absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-green-400 border-2 border-[#111827]" />
+                  </div>
+                  <div>
+                    <h2 className="text-white text-xl font-bold mb-1" style={{ fontFamily: "'Syne', sans-serif" }}>
+                      {user.firstName} {user.lastName}
+                    </h2>
+                    <p className="text-[#5a6478] text-xs mb-2">{user.email}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold border"
+                        style={isLandlord
+                          ? { background: 'rgba(245,158,11,0.1)', borderColor: 'rgba(245,158,11,0.25)', color: '#fbbf24' }
+                          : { background: 'rgba(45,126,247,0.1)', borderColor: 'rgba(45,126,247,0.25)', color: '#60a5fa' }
+                        }>
+                        {isLandlord ? '🏠 Property Owner' : '🎓 Student'}
+                      </span>
+                      <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-green-500/10 border border-green-500/25 text-green-400">
+                        <span className="online-dot w-1.5 h-1.5 rounded-full bg-green-400" />
+                        Active
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {mode === 'view' && (
+                  <div className="flex flex-col gap-2">
+                    <button onClick={startEdit}
+                      className="btn-primary flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border"
+                      style={{ background: 'rgba(45,126,247,0.12)', borderColor: 'rgba(45,126,247,0.3)', color: '#60a5fa' }}>
+                      ✏️ Edit Profile
+                    </button>
+                    <button onClick={() => setShowDeleteConfirm(true)}
+                      className="btn-primary flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border"
+                      style={{ background: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.2)', color: '#f87171' }}>
+                      🗑️ Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Description */}
+              {mode === 'view' && (
+                <div className="mb-6 px-4 py-3 rounded-xl border border-[#1f2a3c] bg-[#0d1526]">
+                  <p className="text-[#3a4a5c] text-[10px] uppercase tracking-wider font-semibold mb-1">About This Account</p>
+                  <p className="text-[#8a96b0] text-xs leading-relaxed">
+                    {isLandlord
+                      ? 'You are registered as an Annex Owner on UniNEST. You can list and manage your properties, review student booking requests, and communicate directly with tenants through the messaging panel.'
+                      : 'You are registered as a Student on UniNEST. You can browse verified annexes near your campus, send inquiries to owners, and manage your accommodation bookings all in one place.'}
+                  </p>
+                </div>
+              )}
+
+              {/* Feedback */}
+              {error && (
+                <div className="fade-in rounded-xl px-4 py-3 mb-5 text-sm border" style={{ background: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.25)', color: '#f87171' }}>
+                  ⚠️ {error}
+                </div>
+              )}
+              {success && (
+                <div className="fade-in rounded-xl px-4 py-3 mb-5 text-sm border" style={{ background: 'rgba(34,197,94,0.08)', borderColor: 'rgba(34,197,94,0.25)', color: '#4ade80' }}>
+                  ✅ {success}
+                </div>
+              )}
+
+              {/* VIEW mode */}
+              {mode === 'view' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <ProfileField label="First Name"   value={user.firstName} icon="👤" />
+                  <ProfileField label="Last Name"    value={user.lastName}  icon="👤" />
+                  <ProfileField label="Gender"       value={user.gender}    icon="⚧" />
+                  <ProfileField label="Email"        value={user.email}     icon="✉️" />
+                  <ProfileField label="Phone"        value={user.phone}     icon="📞" />
+                  <ProfileField label="Account Type" value={isLandlord ? 'Annex Owner' : 'Student'} icon="🎭" />
+                </div>
+              )}
+
+              {/* EDIT mode */}
+              {mode === 'edit' && (
+                <div className="fade-in space-y-4">
+                  <div className="px-4 py-3 rounded-xl border border-blue-500/20 bg-blue-500/5">
+                    <p className="text-blue-300 text-xs leading-relaxed">
+                      ℹ️ You can update your name, gender, and phone number. Your email address and account type are permanent and cannot be changed.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-gray-400 text-[10px] font-semibold uppercase tracking-wider mb-1.5 block">First Name</label>
+                      <input type="text" value={editData.firstName}
+                        onChange={e => setEditData({ ...editData, firstName: e.target.value })}
+                        className="w-full bg-[#0d1526] border border-[#1f2a3c] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500/60 transition-colors" />
+                    </div>
+                    <div>
+                      <label className="text-gray-400 text-[10px] font-semibold uppercase tracking-wider mb-1.5 block">Last Name</label>
+                      <input type="text" value={editData.lastName}
+                        onChange={e => setEditData({ ...editData, lastName: e.target.value })}
+                        className="w-full bg-[#0d1526] border border-[#1f2a3c] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500/60 transition-colors" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-gray-400 text-[10px] font-semibold uppercase tracking-wider mb-1.5 block">Gender</label>
+                    <select value={editData.gender} onChange={e => setEditData({ ...editData, gender: e.target.value })}
+                      className="w-full bg-[#0d1526] border border-[#1f2a3c] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500/60 transition-colors appearance-none">
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                      <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-gray-400 text-[10px] font-semibold uppercase tracking-wider mb-1.5 block">Phone Number</label>
+                    <input type="tel" value={editData.phone}
+                      onChange={e => setEditData({ ...editData, phone: e.target.value })}
+                      className="w-full bg-[#0d1526] border border-[#1f2a3c] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500/60 transition-colors" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 opacity-40">
+                    <div>
+                      <label className="text-gray-400 text-[10px] font-semibold uppercase tracking-wider mb-1.5 block">Email (locked)</label>
+                      <input type="email" value={user.email} disabled
+                        className="w-full bg-[#0d1526] border border-[#1f2a3c] text-gray-500 rounded-xl px-4 py-3 text-sm cursor-not-allowed" />
+                    </div>
+                    <div>
+                      <label className="text-gray-400 text-[10px] font-semibold uppercase tracking-wider mb-1.5 block">Account Type (locked)</label>
+                      <input type="text" value={isLandlord ? 'Annex Owner' : 'Student'} disabled
+                        className="w-full bg-[#0d1526] border border-[#1f2a3c] text-gray-500 rounded-xl px-4 py-3 text-sm cursor-not-allowed" />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button onClick={cancelEdit}
+                      className="flex-1 bg-transparent border border-[#1f2a3c] text-gray-300 hover:text-white hover:border-gray-500 rounded-xl py-3 text-sm font-medium transition-all">
+                      Cancel
+                    </button>
+                    <button onClick={handleSave} disabled={loading}
+                      className="btn-primary flex-1 bg-blue-600 hover:bg-blue-500 text-white rounded-xl py-3 text-sm font-semibold disabled:opacity-50">
+                      {loading ? 'Saving...' : '💾 Save Changes'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ══ LANDLORD DASHBOARD ══ */}
+            {isLandlord && (
+              <div className="space-y-5 mb-5">
+
+                {/* Stats Row */}
+                <div className="grid grid-cols-3 gap-4">
+                  {[
+                    { label: 'Total Annexes', value: ownerStats.totalAnnexes, icon: '🏠', color: 'blue' },
+                    { label: 'All-time Bookings', value: ownerStats.totalBookings, icon: '📋', color: 'green' },
+                    { label: 'Active Tenants', value: ownerStats.upcomingBookings, icon: '👥', color: 'amber' },
+                  ].map((stat, i) => (
+                    <div
+                      key={stat.label}
+                      className="stat-card card-animate bg-[#111827] border border-[#1f2a3c] rounded-2xl p-4 cursor-default"
+                      style={{ animationDelay: `${0.3 + i * 0.1}s` }}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <span className="text-lg">{stat.icon}</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                          style={
+                            stat.color === 'blue'  ? { background: 'rgba(45,126,247,0.1)', color: '#60a5fa' } :
+                            stat.color === 'green' ? { background: 'rgba(34,197,94,0.1)', color: '#4ade80' } :
+                            { background: 'rgba(245,158,11,0.1)', color: '#fbbf24' }
+                          }>
+                          Live
+                        </span>
+                      </div>
+                      <p className="text-white text-2xl font-bold mb-0.5" style={{ fontFamily: "'Syne', sans-serif" }}>
+                        {stat.value}
+                      </p>
+                      <p className="text-[#5a6478] text-[10px]">{stat.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Latest Confirmed Booking */}
+                <div className="card-animate bg-[#111827] border border-[#1f2a3c] rounded-2xl p-6" style={{ animationDelay: '0.4s' }}>
+                  <div className="flex items-center justify-between mb-5">
+                    <div>
+                      <h2 className="text-white text-base font-bold" style={{ fontFamily: "'Syne', sans-serif" }}>
+                        Latest Confirmed Booking
+                      </h2>
+                      <p className="text-[#5a6478] text-xs mt-0.5">Most recent confirmed tenant across your properties.</p>
+                    </div>
+                    {ownerBookings.length > 1 && (
+                      <span className="text-[10px] text-[#5a6478]">+{ownerBookings.length - 1} more</span>
+                    )}
+                  </div>
+
+                  {ownerBookingsLoading && (
+                    <div className="space-y-3">
+                      <div className="h-4 bg-[#0d1526] rounded animate-pulse w-2/3" />
+                      <div className="h-4 bg-[#0d1526] rounded animate-pulse w-1/2" />
+                    </div>
+                  )}
+
+                  {!ownerBookingsLoading && latestBooking && (
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="px-4 py-3 rounded-xl bg-[#0d1526] border border-[#1f2a3c]">
+                        <p className="text-[#3a4a5c] text-[9px] uppercase tracking-wider font-semibold mb-1.5">👤 Student</p>
+                        <p className="text-white text-sm font-semibold">
+                          {latestBooking.student?.firstName} {latestBooking.student?.lastName}
+                        </p>
+                        <p className="text-[#5a6478] text-[10px] mt-0.5 truncate">{latestBooking.student?.email}</p>
+                        {latestBooking.student?.phone && (
+                          <p className="text-[#5a6478] text-[10px]">{latestBooking.student.phone}</p>
+                        )}
+                      </div>
+                      <div className="px-4 py-3 rounded-xl bg-[#0d1526] border border-[#1f2a3c]">
+                        <p className="text-[#3a4a5c] text-[9px] uppercase tracking-wider font-semibold mb-1.5">🏠 Annex</p>
+                        <p className="text-white text-sm font-semibold">{latestBooking.annex?.title || 'Annex'}</p>
+                        {latestBooking.annex?.selectedAddress && (
+                          <p className="text-[#5a6478] text-[10px] mt-0.5 leading-relaxed">{latestBooking.annex.selectedAddress}</p>
+                        )}
+                      </div>
+                      <div className="px-4 py-3 rounded-xl bg-[#0d1526] border border-[#1f2a3c]">
+                        <p className="text-[#3a4a5c] text-[9px] uppercase tracking-wider font-semibold mb-1.5">📅 Period</p>
+                        <p className="text-white text-xs font-medium">{formatDate(latestBooking.checkInDate)}</p>
+                        <p className="text-[#3a4a5c] text-[9px] my-0.5">to</p>
+                        <p className="text-white text-xs font-medium">{formatDate(latestBooking.checkOutDate)}</p>
+                        <span className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-[9px] font-bold"
+                          style={{ background: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.3)', color: '#4ade80', border: '1px solid' }}>
+                          <span className="online-dot w-1.5 h-1.5 rounded-full bg-green-400" />
+                          {latestBooking.status?.charAt(0).toUpperCase() + latestBooking.status?.slice(1) || 'Confirmed'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {!ownerBookingsLoading && !latestBooking && (
+                    <div className="text-center py-8 border border-dashed border-[#1f2a3c] rounded-xl">
+                      <div className="text-3xl mb-2">📭</div>
+                      <p className="text-gray-400 text-sm font-medium">No confirmed bookings yet</p>
+                      <p className="text-[#3a4a5c] text-xs mt-1 max-w-xs mx-auto leading-relaxed">
+                        Once students book and you confirm, their details will appear here.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Annex Portfolio */}
+                <div className="card-animate bg-[#111827] border border-[#1f2a3c] rounded-2xl p-6" style={{ animationDelay: '0.5s' }}>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+                    <div>
+                      <h2 className="text-white text-base font-bold" style={{ fontFamily: "'Syne', sans-serif" }}>
+                        Your Annex Portfolio
+                      </h2>
+                      <p className="text-[#5a6478] text-xs mt-0.5">Edit details, update pricing, or remove listings.</p>
+                    </div>
+                    <Link to="/addAnnex"
+                      className="btn-primary inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                      style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', color: '#4ade80' }}>
+                      ➕ Add New Annex
+                    </Link>
+                  </div>
+
+                  {annexLoading && (
+                    <div className="space-y-3">
+                      {[1,2].map(i => <div key={i} className="h-16 bg-[#0d1526] rounded-xl animate-pulse" />)}
+                    </div>
+                  )}
+
+                  {!annexLoading && ownerAnnexes.length === 0 && (
+                    <div className="text-center py-8 border border-dashed border-[#1f2a3c] rounded-xl">
+                      <div className="text-3xl mb-2">🏗️</div>
+                      <p className="text-gray-400 text-sm font-medium">No annexes listed yet</p>
+                      <p className="text-[#3a4a5c] text-xs mt-1">Click "Add New Annex" to get started and attract students.</p>
+                    </div>
+                  )}
+
+                  {!annexLoading && ownerAnnexes.length > 0 && (
+                    <div className="space-y-3">
+                      {ownerAnnexes.map((annex) => (
+                        <div key={annex._id}
+                          className="annex-card bg-[#0d1526] border border-[#1f2a3c] rounded-xl p-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                          {editingAnnexId === annex._id ? (
+                            <div className="flex-1 space-y-3 fade-in">
+                              <input type="text" value={annexEditData.title}
+                                onChange={(e) => setAnnexEditData({ ...annexEditData, title: e.target.value })}
+                                className="w-full bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500/60 transition-colors" />
+                              <input type="number" value={annexEditData.price}
+                                onChange={(e) => setAnnexEditData({ ...annexEditData, price: e.target.value })}
+                                className="w-full bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500/60 transition-colors" />
+                              <select value={annexEditData.preferredGender}
+                                onChange={(e) => setAnnexEditData({ ...annexEditData, preferredGender: e.target.value })}
+                                className="w-full bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500/60 transition-colors">
+                                <option value="Any">Any</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                              </select>
+                              <textarea value={annexEditData.description}
+                                onChange={(e) => setAnnexEditData({ ...annexEditData, description: e.target.value })}
+                                rows={3} placeholder="Description..."
+                                className="w-full bg-[#111827] border border-[#1f2a3c] text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500/60 transition-colors resize-none" />
+                              <div className="flex gap-2">
+                                <button onClick={() => saveAnnexEdit(annex._id)} disabled={loading}
+                                  className="btn-primary px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold disabled:opacity-50">
+                                  {loading ? 'Saving...' : '💾 Save'}
+                                </button>
+                                <button onClick={cancelAnnexEdit}
+                                  className="px-4 py-2 rounded-lg border border-[#334155] text-gray-300 text-xs font-semibold hover:text-white transition-colors">
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex-1">
+                                <p className="text-white font-semibold text-sm">{annex.title}</p>
+                                <p className="text-blue-400 text-xs mt-1 font-medium">Rs. {annex.price?.toLocaleString()} / month</p>
+                                {annex.selectedAddress && (
+                                  <p className="text-[#5a6478] text-xs mt-1 flex items-center gap-1">
+                                    📍 {annex.selectedAddress}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <button onClick={() => startAnnexEdit(annex)}
+                                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200"
+                                  style={{ background: 'rgba(45,126,247,0.12)', border: '1px solid rgba(45,126,247,0.3)', color: '#60a5fa' }}>
+                                  ✏️ Edit
+                                </button>
+                                <button onClick={() => deleteAnnex(annex._id)}
+                                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200"
+                                  style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
+                                  🗑️
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ══ STUDENT SECTION ══ */}
+            {!isLandlord && (
+              <div className="card-animate mb-5 bg-[#111827] border border-[#1f2a3c] rounded-2xl p-6" style={{ animationDelay: '0.3s' }}>
+                <h2 className="text-white text-base font-bold mb-2" style={{ fontFamily: "'Syne', sans-serif" }}>
+                  🏠 Your Housing Journey
+                </h2>
+                <p className="text-[#8a96b0] text-sm leading-relaxed mb-4">
+                  Finding the right place to stay during your studies is important. UniNEST connects you with verified annex owners near your campus, so you can focus on what matters most — your education.
+                </p>
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  {[
+                    { icon: '🔍', label: 'Browse', desc: 'Search annexes' },
+                    { icon: '💬', label: 'Inquire', desc: 'Message owners' },
+                    { icon: '✅', label: 'Book', desc: 'Confirm your stay' },
+                  ].map((step, i) => (
+                    <div key={step.label} className="text-center px-3 py-3 rounded-xl bg-[#0d1526] border border-[#1f2a3c]">
+                      <div className="text-2xl mb-1">{step.icon}</div>
+                      <p className="text-white text-xs font-semibold">{step.label}</p>
+                      <p className="text-[#5a6478] text-[9px]">{step.desc}</p>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={() => navigate('/searchAnnex')}
+                  className="btn-primary w-full py-3 rounded-xl text-sm font-semibold text-white transition-all"
+                  style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)' }}>
+                  🔍 Browse Available Annexes
+                </button>
+              </div>
+            )}
+
+            {/* ══ LOG OUT ══ */}
+            <button onClick={handleLogout}
+              className="w-full border border-red-500/25 text-red-400 hover:bg-red-500/10 rounded-xl py-3 text-sm font-medium transition-all duration-200 hover:border-red-500/40">
+              🚪 Sign Out of UniNEST
+            </button>
+
+          </div>
         </main>
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* ══════════════════════════════════════════
+          DELETE CONFIRMATION MODAL
+      ══════════════════════════════════════════ */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-          <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-8 max-w-sm w-full shadow-2xl">
-            <div className="text-4xl text-center mb-4">⚠️</div>
-            <h3 className="text-white text-xl font-bold text-center mb-2">Delete Account?</h3>
-            <p className="text-gray-400 text-sm text-center mb-6">
-              This will permanently delete your account and all your data. This cannot be undone.
-            </p>
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 px-4 fade-in">
+          <div className="bg-[#111827] border border-[#1f2a3c] rounded-2xl p-8 max-w-sm w-full" style={{ boxShadow: '0 0 0 1px rgba(239,68,68,0.1), 0 40px 80px rgba(0,0,0,0.6)' }}>
+            <div className="text-center mb-6">
+              <div className="text-5xl mb-4">⚠️</div>
+              <h3 className="text-white text-xl font-bold mb-2" style={{ fontFamily: "'Syne', sans-serif" }}>Delete Account?</h3>
+              <p className="text-[#8a96b0] text-sm leading-relaxed">
+                This action is <span className="text-red-400 font-semibold">permanent and irreversible</span>. All your data, listings, and booking history will be erased immediately.
+              </p>
+            </div>
             <div className="flex gap-3">
               <button onClick={() => setShowDeleteConfirm(false)}
                 className="flex-1 border border-[#1f2a3c] text-gray-300 hover:text-white rounded-xl py-3 text-sm font-medium transition-all">
-                Cancel
+                Keep Account
               </button>
               <button onClick={handleDelete} disabled={loading}
                 className="flex-1 bg-red-600 hover:bg-red-500 text-white rounded-xl py-3 text-sm font-semibold transition-all disabled:opacity-50">
@@ -987,10 +1264,13 @@ export default function Profile() {
   );
 }
 
-function ProfileField({ label, value }) {
+function ProfileField({ label, value, icon }) {
   return (
-    <div className="bg-[#0d1526] border border-[#1f2a3c] rounded-xl px-4 py-3">
-      <p className="text-gray-500 text-xs uppercase tracking-wider mb-0.5">{label}</p>
+    <div className="bg-[#0d1526] border border-[#1f2a3c] rounded-xl px-4 py-3 hover:border-[#2a3a50] transition-colors duration-200">
+      <div className="flex items-center gap-1.5 mb-1">
+        <span className="text-xs">{icon}</span>
+        <p className="text-[#3a4a5c] text-[9px] uppercase tracking-[0.1em] font-semibold">{label}</p>
+      </div>
       <p className="text-white text-sm font-medium">{value || '—'}</p>
     </div>
   );
