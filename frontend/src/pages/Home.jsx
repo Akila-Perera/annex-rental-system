@@ -8,6 +8,126 @@ import axios from 'axios';
 
 const API_BASE = 'http://localhost:5000';
 const sliitLocation = { lat: 6.9147, lng: 79.9723 };
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&q=80';
+
+/* ── Inline styles for top-rated cards (matches AnnexBookingPage exactly) ── */
+const topRatedStyles = `
+  @keyframes green-pulse {
+    0%   { box-shadow: 0 0 4px 1px rgba(16,185,129,0.5); }
+    50%  { box-shadow: 0 0 12px 4px rgba(16,185,129,0.9); }
+    100% { box-shadow: 0 0 4px 1px rgba(16,185,129,0.5); }
+  }
+  @keyframes loc-glow {
+    0%   { box-shadow: 0 0 5px 1px rgba(16,185,129,0.3), inset 0 0 8px rgba(16,185,129,0.05); }
+    50%  { box-shadow: 0 0 12px 3px rgba(16,185,129,0.6), inset 0 0 12px rgba(16,185,129,0.1); }
+    100% { box-shadow: 0 0 5px 1px rgba(16,185,129,0.3), inset 0 0 8px rgba(16,185,129,0.05); }
+  }
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.94); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  /* ── Card shell — identical to AnnexBookingPage .annex-card ── */
+  .tr-card {
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+    transition: transform 0.28s cubic-bezier(0.22,1,0.36,1), box-shadow 0.28s, border-color 0.28s;
+    animation: scaleIn 0.5s cubic-bezier(0.22,1,0.36,1) both;
+  }
+  .tr-card:hover {
+    transform: translateY(-7px) scale(1.012);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.55), 0 0 35px rgba(45,126,247,0.22);
+    border-color: rgba(45,126,247,0.25);
+  }
+  .tr-card:hover .tr-card-img { transform: scale(1.07); }
+  .tr-card-img { transition: transform 0.5s cubic-bezier(0.22,1,0.36,1); }
+
+  /* ── Badges ── */
+  .tr-badge-gender {
+    background: rgba(45,126,247,0.35);
+    border: 1.5px solid rgba(45,126,247,0.75);
+    color: #e0f0ff;
+    backdrop-filter: blur(10px);
+    font-size: 11px; font-weight: 800; letter-spacing: 0.07em;
+    padding: 0.32rem 0.85rem; border-radius: 999px;
+    text-shadow: 0 0 8px rgba(45,126,247,0.8);
+    position: absolute; top: 12px; left: 12px; z-index: 2;
+  }
+  .tr-badge-available {
+    background: rgba(16,185,129,0.25);
+    border: 1.5px solid rgba(16,185,129,0.65);
+    color: #6ee7b7; backdrop-filter: blur(10px);
+    display: flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 800;
+    padding: 0.32rem 0.75rem; border-radius: 999px;
+    animation: green-pulse 2.2s ease-in-out infinite;
+    text-shadow: 0 0 8px rgba(16,185,129,0.7);
+    position: absolute; top: 12px; right: 12px; z-index: 2;
+  }
+  .tr-badge-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #34d399; box-shadow: 0 0 6px 2px rgba(52,211,153,0.8);
+    flex-shrink: 0;
+  }
+
+  /* ── Location pill ── */
+  .tr-location-row {
+    display: flex !important; align-items: center !important; gap: 6px !important;
+    margin: 0 0 0.65rem !important; padding: 0.32rem 0.75rem !important;
+    background: rgba(16,185,129,0.12) !important;
+    border: 1.5px solid rgba(16,185,129,0.45) !important;
+    border-radius: 999px !important; width: fit-content !important; max-width: 100% !important;
+    animation: loc-glow 2.4s ease-in-out infinite !important;
+  }
+  .tr-location-icon { flex-shrink: 0; color: #34d399 !important; filter: drop-shadow(0 0 4px rgba(52,211,153,0.9)) !important; }
+  .tr-location-text {
+    font-size: 0.76rem !important; font-weight: 700 !important; color: #6ee7b7 !important;
+    overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important;
+    text-shadow: 0 0 10px rgba(16,185,129,0.7) !important; letter-spacing: 0.01em !important;
+  }
+
+  /* ── Amenity chips ── */
+  .tr-amenity-chip { border-radius: 6px; padding: 0.18rem 0.55rem; font-size: 0.68rem; font-weight: 600; white-space: nowrap; transition: transform 0.2s; }
+  .tr-amenity-chip:hover { transform: scale(1.08); }
+  .tr-chip-blue   { background: rgba(45,126,247,0.15);  border: 1px solid rgba(45,126,247,0.45);  color: #7ab8fc; }
+  .tr-chip-purple { background: rgba(168,85,247,0.15);  border: 1px solid rgba(168,85,247,0.45);  color: #d8b4fe; }
+  .tr-chip-emerald{ background: rgba(16,185,129,0.15);  border: 1px solid rgba(16,185,129,0.45);  color: #6ee7b7; }
+  .tr-chip-rose   { background: rgba(244,63,94,0.15);   border: 1px solid rgba(244,63,94,0.45);   color: #fda4af; }
+  .tr-chip-amber  { background: rgba(245,158,11,0.15);  border: 1px solid rgba(245,158,11,0.45);  color: #fcd34d; }
+  .tr-chip-cyan   { background: rgba(6,182,212,0.15);   border: 1px solid rgba(6,182,212,0.45);   color: #67e8f9; }
+
+  /* ── Rating ── */
+  .tr-rating-row { display: flex; align-items: center; gap: 6px; margin-bottom: 0.45rem; }
+  .tr-rating-score {
+    background: rgba(251,191,36,0.15); border: 1px solid rgba(251,191,36,0.4);
+    color: #fbbf24; font-size: 0.72rem; font-weight: 800;
+    padding: 0.15rem 0.5rem; border-radius: 999px;
+  }
+
+  /* ── CTA buttons ── */
+  .tr-btn-outline {
+    flex: 1; padding: 0.52rem; border-radius: 10px; font-size: 0.76rem; font-weight: 600;
+    cursor: pointer; background: transparent; border: 1px solid rgba(45,126,247,0.35);
+    color: #5ba4fa; transition: all 0.18s; text-align: center; text-decoration: none;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tr-btn-outline:hover { background: rgba(45,126,247,0.12); border-color: rgba(45,126,247,0.6); color: #93c3fd; transform: scale(1.03); }
+  .tr-btn-glow {
+    flex: 1; padding: 0.52rem; border-radius: 10px; font-size: 0.76rem; font-weight: 700;
+    cursor: pointer; color: #fff; border: none;
+    background: linear-gradient(135deg, #2d7ef7 0%, #1a5fd4 100%);
+    box-shadow: 0 0 20px rgba(45,126,247,0.35); transition: all 0.18s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tr-btn-glow:hover { background: linear-gradient(135deg, #4a96ff 0%, #2d7ef7 100%); box-shadow: 0 0 32px rgba(45,126,247,0.6); transform: scale(1.04); }
+`;
+
+const CHIP_CLASSES = ['tr-chip-blue','tr-chip-purple','tr-chip-emerald','tr-chip-rose','tr-chip-amber','tr-chip-cyan'];
 
 const Home = () => {
   const [scrolled, setScrolled] = useState(false);
@@ -26,7 +146,6 @@ const Home = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Fetch real top-rated properties
   useEffect(() => {
     const fetchTopRated = async () => {
       try {
@@ -60,29 +179,85 @@ const Home = () => {
     fetchMapAnnexes();
   }, []);
 
-  const getRating = (property) => property.averageRating || property.overallScore || 4.5;
+  /* ── Helpers: resolve nested property object from /quality/top-rated ── */
+  const resolveProperty = (item) => item.property || item;
 
-  const getPrice = (property) => {
-    const price = property.property?.price || property.price;
-    return price ? `Rs.${price.toLocaleString()} / Mo` : 'Rs.5,000 / Mo';
+  const getRating = (item) =>
+    item.averageRating ?? item.overallScore ?? resolveProperty(item).averageRating ?? null;
+
+  const getPrice = (item) => {
+    const prop = resolveProperty(item);
+    const price = prop.price ?? item.price;
+    return price != null ? `Rs. ${Number(price).toLocaleString()} /mo` : null;
   };
 
-  const getImage = (property) => {
-    const images = property.property?.imageUrls || property.imageUrls;
-    if (images && images.length > 0) return `http://localhost:5000${images[0]}`;
-    return 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&q=80';
+  const getImage = (item) => {
+    const prop = resolveProperty(item);
+    const urls = prop.imageUrls ?? item.imageUrls;
+    if (Array.isArray(urls) && urls.length > 0) {
+      const src = urls[0];
+      return src.startsWith('http') ? src : `${API_BASE}${src}`;
+    }
+    const single = prop.imageUrl ?? item.imageUrl;
+    if (single) return single.startsWith('http') ? single : `${API_BASE}${single}`;
+    return FALLBACK_IMAGE;
   };
 
-  const getLocation = (property) => {
-    const address = property.property?.selectedAddress || property.selectedAddress;
-    return address ? address.substring(0, 40) : 'Near Campus';
+  const getLocation = (item) => {
+    const prop = resolveProperty(item);
+    return prop.selectedAddress ?? item.selectedAddress ?? null;
   };
 
-  const getBadge = (property) => {
-    const gender = property.property?.preferredGender || property.preferredGender;
-    if (gender === 'Female') return { text: 'FEMALE ONLY', class: 'bg-pink-600/85 text-white' };
-    if (gender === 'Male') return { text: 'MALE ONLY', class: 'bg-blue-700/85 text-white' };
-    return { text: 'VERIFIED', class: 'bg-green-600/85 text-white' };
+  const getGender = (item) => {
+    const prop = resolveProperty(item);
+    return prop.preferredGender ?? item.preferredGender ?? null;
+  };
+
+  const getTitle = (item) => {
+    const prop = resolveProperty(item);
+    return prop.title ?? item.title ?? 'Property';
+  };
+
+  const getPropertyId = (item) => {
+    const prop = resolveProperty(item);
+    return prop._id ?? item._id;
+  };
+
+  /* ── REAL features only — no dummy fallbacks ── */
+  const getFeatures = (item) => {
+    const prop = resolveProperty(item);
+    const feats = prop.features ?? item.features;
+    if (Array.isArray(feats) && feats.length > 0) return feats.slice(0, 5);
+    const amen = prop.amenities ?? item.amenities;
+    if (Array.isArray(amen) && amen.length > 0) return amen.slice(0, 5);
+    return [];
+  };
+
+  /* ── Real description only ── */
+  const getDescription = (item) => {
+    const prop = resolveProperty(item);
+    return prop.description ?? item.description ?? null;
+  };
+
+  const handleBookNow = (item) => {
+    const prop = resolveProperty(item);
+    navigate('/booking', {
+      state: {
+        room: {
+          annexId: getPropertyId(item),
+          title: getTitle(item),
+          imageUrl: getImage(item),
+          location: getLocation(item) || 'Near SLIIT Malabe Campus',
+        },
+      },
+    });
+  };
+
+  const renderStars = (rating) => {
+    const num = typeof rating === 'number' ? rating : parseFloat(rating) || 0;
+    return [1,2,3,4,5].map(s => (
+      <span key={s} style={{ color: s <= Math.round(num) ? '#fbbf24' : 'rgba(255,255,255,0.15)', fontSize: 13 }}>★</span>
+    ));
   };
 
   const features = [
@@ -116,6 +291,8 @@ const Home = () => {
         .features-bg    { background:radial-gradient(ellipse 80% 50% at 50% 50%, rgba(45,126,247,0.06) 0%, transparent 70%); }
         .cta-glow-orb   { background:radial-gradient(ellipse, rgba(45,126,247,0.2) 0%, transparent 70%); }
         .search-focus:focus-within { border-color:rgba(45,126,247,0.4) !important; box-shadow:0 20px 60px rgba(0,0,0,0.4), 0 0 0 2px rgba(45,126,247,0.25) !important; }
+
+        ${topRatedStyles}
       `}</style>
 
       {/* ════════════ NAVBAR ════════════ */}
@@ -129,7 +306,6 @@ const Home = () => {
           <ul className="hidden md:flex gap-1 ml-auto">
             <li><a href="#browse" className="px-3.5 py-2 rounded-lg text-[#8a96b0] text-sm hover:text-[#f0f4ff] hover:bg-white/5 transition-all duration-300">Home</a></li>
             <li><Link to="/annex-bookings" className="px-3.5 py-2 rounded-lg text-[#8a96b0] text-sm hover:text-[#f0f4ff] hover:bg-white/5 transition-all duration-300">Bookings</Link></li>
-            <li><a href="#listings" className="px-3.5 py-2 rounded-lg text-[#8a96b0] text-sm hover:text-[#f0f4ff] hover:bg-white/5 transition-all duration-300">Top Listings</a></li>
             <li><Link to="/support" className="px-3.5 py-2 rounded-lg text-[#8a96b0] text-sm hover:text-[#f0f4ff] hover:bg-white/5 transition-all duration-300">Student Support</Link></li>
             <li><Link to="/about" className="px-3.5 py-2 rounded-lg text-[#8a96b0] text-sm hover:text-[#f0f4ff] hover:bg-white/5 transition-all duration-300">About Us</Link></li>
           </ul>
@@ -215,26 +391,15 @@ const Home = () => {
               <div className="h-[250px] sm:h-[290px] md:h-[320px] w-full">
                 <Map
                   mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
-                  initialViewState={{
-                    longitude: sliitLocation.lng,
-                    latitude: sliitLocation.lat,
-                    zoom: 12.5,
-                  }}
+                  initialViewState={{ longitude: sliitLocation.lng, latitude: sliitLocation.lat, zoom: 12.5 }}
                   mapStyle="mapbox://styles/mapbox/dark-v11"
                   style={{ width: '100%', height: '100%' }}
                 >
                   <Marker longitude={sliitLocation.lng} latitude={sliitLocation.lat}>
-                    <div className="w-8 h-8 rounded-full bg-red-600 border-2 border-white shadow-lg flex items-center justify-center text-white text-xs">
-                      🎓
-                    </div>
+                    <div className="w-8 h-8 rounded-full bg-red-600 border-2 border-white shadow-lg flex items-center justify-center text-white text-xs">🎓</div>
                   </Marker>
-
                   {mapAnnexes.map((annex) => (
-                    <Marker
-                      key={annex._id}
-                      longitude={annex.location.coordinates[0]}
-                      latitude={annex.location.coordinates[1]}
-                    >
+                    <Marker key={annex._id} longitude={annex.location.coordinates[0]} latitude={annex.location.coordinates[1]}>
                       <div className="px-2 py-1 rounded-full border border-[#1f3058] bg-[#0b1628] text-blue-300 text-[10px] font-semibold whitespace-nowrap">
                         {annex.title}
                       </div>
@@ -269,20 +434,23 @@ const Home = () => {
         ))}
       </section>
 
-      {/* ════════════ TOP LISTINGS ════════════ */}
-      <section className="py-20 px-8" id="listings">
+      {/* ════════════ TOP RATED — real data, Booking page card style ════════════ */}
+      <section className="py-20 px-8" id="listings" style={{ background: '#050c1a' }}>
         <div className="max-w-[1200px] mx-auto">
           <div className="flex justify-between items-end mb-9 flex-wrap gap-2.5">
             <div>
+              <p style={{ fontSize: 11, color: 'rgba(45,126,247,0.85)', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                ✦ &nbsp;Highest Rated
+              </p>
               <h2 className="font-display text-[2rem] font-extrabold text-[#f0f4ff] mb-1.5">Top Rated Annexes</h2>
-              <p className="text-[#8a96b0] text-[0.95rem]">Our most popular verified listings based on student reviews</p>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.95rem' }}>Our most popular verified listings based on student reviews</p>
             </div>
             <Link to="/searchAnnex" className="text-blue-400 text-sm font-medium hover:text-blue-300 hover:tracking-wide transition-all duration-300">View All →</Link>
           </div>
 
           {loadingTop ? (
             <div className="text-center py-12">
-              <div className="w-10 h-10 border-3 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-3"></div>
+              <div className="w-10 h-10 border-3 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-3" />
               <p className="text-gray-400 text-sm">Loading top rated properties...</p>
             </div>
           ) : topListings.length === 0 ? (
@@ -290,50 +458,119 @@ const Home = () => {
               <p className="text-gray-400">No properties with reviews yet. Be the first to review!</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.3rem' }}>
               {topListings.map((item, i) => {
-                const property = item.property || item;
-                const badge = getBadge(item);
-                const rating = getRating(item);
-                const price = getPrice(item);
-                const image = getImage(item);
-                const location = getLocation(item);
-                const title = property?.title || 'Property';
-                const propertyId = property?._id || item._id;
+                const rating      = getRating(item);
+                const price       = getPrice(item);
+                const image       = getImage(item);
+                const location    = getLocation(item);
+                const title       = getTitle(item);
+                const propertyId  = getPropertyId(item);
+                const genderVal   = getGender(item);
+                const chipFeats   = getFeatures(item);
+                const description = getDescription(item);
 
                 return (
-                  <div key={propertyId} className="bg-[#1a2030] border border-white/7 rounded-[20px] overflow-hidden animate-slide-card hover:-translate-y-1.5 hover:border-blue-500/30 hover:shadow-[0_20px_60px_rgba(0,0,0,0.4),0_0_0_1px_rgba(45,126,247,0.15)] hover:bg-[#1e2638] transition-all duration-300"
-                    style={{animationDelay:`${i*0.15}s`}}>
-                    <div className="relative overflow-hidden h-[200px]">
-                      <img src={image} alt={title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" />
-                      <span className={`absolute top-3 left-3 px-2.5 py-1 rounded-md text-[0.7rem] font-bold tracking-[0.05em] ${badge.class}`}>{badge.text}</span>
-                      <span className="absolute top-3 right-3 px-3 py-1.5 rounded-lg bg-black/70 backdrop-blur-sm text-white text-sm font-semibold border border-white/15">{price}</span>
+                  <article
+                    key={propertyId}
+                    className="tr-card"
+                    style={{ animationDelay: `${0.05 + i * 0.1}s` }}
+                  >
+                    {/* ── Image ── */}
+                    <div style={{ position: 'relative', height: 190, overflow: 'hidden' }}>
+                      <img
+                        src={image}
+                        alt={title}
+                        className="tr-card-img"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        onError={(e) => { e.target.src = FALLBACK_IMAGE; }}
+                      />
+                      {/* dark gradient overlay */}
+                      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 30%, rgba(5,12,26,0.8) 100%)' }} />
+
+                      {/* Gender badge */}
+                      {genderVal && <span className="tr-badge-gender">{genderVal}</span>}
+
+                      {/* Available badge */}
+                      <span className="tr-badge-available">
+                        <span className="tr-badge-dot" />
+                        Available
+                      </span>
+
+                      {/* Price */}
+                      {price && (
+                        <span style={{ background: 'rgba(5,12,26,0.75)', border: '1px solid rgba(45,126,247,0.3)', backdropFilter: 'blur(8px)', borderRadius: 8, padding: '0.28rem 0.65rem', fontSize: '0.8rem', fontWeight: 700, color: '#7ab8fc', position: 'absolute', bottom: 12, left: 12, zIndex: 2 }}>
+                          {price}
+                        </span>
+                      )}
                     </div>
-                    <div className="p-5">
-                      <div className="flex justify-between items-center mb-1.5">
-                        <h3 className="font-display text-[1.05rem] font-bold text-[#f0f4ff]">{title}</h3>
-                        <span className="text-amber-400 text-sm font-semibold">★ {typeof rating === 'number' ? rating.toFixed(1) : rating}</span>
+
+                    {/* ── Body ── */}
+                    <div style={{ padding: '1rem 1.1rem 1.1rem' }}>
+
+                      {/* Title */}
+                      <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e8eeff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: '0 0 0.5rem' }}>
+                        {title}
+                      </h3>
+
+                      {/* ── Rating row (only if we have a real rating) ── */}
+                      {rating != null && (
+                        <div className="tr-rating-row">
+                          <span className="tr-rating-score">★ {typeof rating === 'number' ? rating.toFixed(1) : rating}</span>
+                          <div style={{ display: 'flex', gap: 2 }}>{renderStars(rating)}</div>
+                          <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)' }}>/ 5.0</span>
+                        </div>
+                      )}
+
+                      {/* ── Location green pill (only if real address exists) ── */}
+                      {location && (
+                        <div className="tr-location-row">
+                          <svg className="tr-location-icon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                            <circle cx="12" cy="9" r="2.5" fill="#050c1a"/>
+                          </svg>
+                          <span className="tr-location-text" title={location}>{location}</span>
+                        </div>
+                      )}
+
+                      {/* ── Real description (only if exists) ── */}
+                      {description && (
+                        <p style={{ fontSize: '0.76rem', color: 'rgba(255,255,255,0.42)', lineHeight: 1.65, margin: '0 0 0.85rem', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {description}
+                        </p>
+                      )}
+
+                      {/* ── Real feature chips (only if property has them) ── */}
+                      {chipFeats.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.9rem' }}>
+                          {chipFeats.map((f, idx) => (
+                            <span
+                              key={idx}
+                              className={`tr-amenity-chip ${CHIP_CLASSES[idx % CHIP_CLASSES.length]}`}
+                            >
+                              {f}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <hr style={{ border: 'none', height: '1px', background: 'rgba(255,255,255,0.07)', margin: '0 0 0.9rem' }} />
+
+                      {/* ── CTA buttons — same as Booking page ── */}
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <Link to={`/annex/${propertyId}`} className="tr-btn-outline">
+                          View Details
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleBookNow(item)}
+                          className="tr-btn-glow"
+                        >
+                          Book Now →
+                        </button>
                       </div>
-                      <p className="text-[#5a6478] text-[0.82rem] mb-4">📍 {location}</p>
-                      <div className="flex gap-2 mb-4 p-3 rounded-lg bg-white/3 border border-white/7">
-                        <div className="flex-1 text-center">
-                          <span className="block text-lg mb-1">📶</span>
-                          <span className="block text-[0.65rem] text-[#5a6478] font-semibold tracking-[0.05em]">WiFi</span>
-                        </div>
-                        <div className="flex-1 text-center">
-                          <span className="block text-lg mb-1">🔒</span>
-                          <span className="block text-[0.65rem] text-[#5a6478] font-semibold tracking-[0.05em]">SECURITY</span>
-                        </div>
-                        <div className="flex-1 text-center">
-                          <span className="block text-lg mb-1">👕</span>
-                          <span className="block text-[0.65rem] text-[#5a6478] font-semibold tracking-[0.05em]">LAUNDRY</span>
-                        </div>
-                      </div>
-                      <Link to={`/annex/${propertyId}`} className="block w-full py-3 bg-blue-500/10 border border-blue-500/30 text-blue-300 rounded-lg text-sm font-medium text-center cursor-pointer hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-all duration-300">
-                        View Details
-                      </Link>
                     </div>
-                  </div>
+                  </article>
                 );
               })}
             </div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -7,6 +7,51 @@ const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=1200&q=80';
 
 const styles = `
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(28px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.94); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes shimmer {
+    0%   { background-position: -600px 0; }
+    100% { background-position: 600px 0; }
+  }
+  @keyframes pulse-ring {
+    0%   { box-shadow: 0 0 0 0 rgba(45,126,247,0.35); }
+    70%  { box-shadow: 0 0 0 10px rgba(45,126,247,0); }
+    100% { box-shadow: 0 0 0 0 rgba(45,126,247,0); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-8px); }
+  }
+  @keyframes orb-drift {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33%       { transform: translate(30px, -20px) scale(1.04); }
+    66%       { transform: translate(-20px, 15px) scale(0.97); }
+  }
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  @keyframes green-pulse {
+    0%   { box-shadow: 0 0 4px 1px rgba(16,185,129,0.5); }
+    50%  { box-shadow: 0 0 12px 4px rgba(16,185,129,0.9); }
+    100% { box-shadow: 0 0 4px 1px rgba(16,185,129,0.5); }
+  }
+  @keyframes loc-glow {
+    0%   { box-shadow: 0 0 5px 1px rgba(16,185,129,0.3), inset 0 0 8px rgba(16,185,129,0.05); }
+    50%  { box-shadow: 0 0 12px 3px rgba(16,185,129,0.6), inset 0 0 12px rgba(16,185,129,0.1); }
+    100% { box-shadow: 0 0 5px 1px rgba(16,185,129,0.3), inset 0 0 8px rgba(16,185,129,0.05); }
+  }
+
   .annex-wrap {
     min-height: 100vh;
     background: #050c1a;
@@ -23,13 +68,97 @@ const styles = `
     width: 520px; height: 520px;
     background: radial-gradient(circle, rgba(45,126,247,0.15) 0%, transparent 70%);
     pointer-events: none;
+    animation: orb-drift 14s ease-in-out infinite;
   }
   .cta-glow-orb {
     position: absolute; bottom: -160px; right: -100px;
     width: 600px; height: 600px;
     background: radial-gradient(ellipse, rgba(45,126,247,0.2) 0%, transparent 70%);
     pointer-events: none;
+    animation: orb-drift 18s ease-in-out infinite reverse;
   }
+  .mid-glow-orb {
+    position: absolute; top: 40%; left: 50%;
+    transform: translateX(-50%);
+    width: 700px; height: 300px;
+    background: radial-gradient(ellipse, rgba(45,126,247,0.05) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .header-animate {
+    animation: fadeInDown 0.6s cubic-bezier(0.22,1,0.36,1) both;
+  }
+  .hero-tagline {
+    animation: fadeInDown 0.7s 0.1s cubic-bezier(0.22,1,0.36,1) both;
+    text-align: center;
+    margin-bottom: 2.2rem;
+  }
+  .search-wrap {
+    animation: fadeInDown 0.7s 0.18s cubic-bezier(0.22,1,0.36,1) both;
+    position: relative;
+    max-width: 520px;
+    margin: 0 auto 2.5rem;
+  }
+  .search-input {
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(45,126,247,0.28);
+    border-radius: 50px;
+    padding: 0.72rem 1.2rem 0.72rem 3rem;
+    color: #e8eeff;
+    font-size: 0.88rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    backdrop-filter: blur(12px);
+  }
+  .search-input::placeholder { color: rgba(255,255,255,0.3); }
+  .search-input:focus {
+    border-color: rgba(45,126,247,0.65);
+    box-shadow: 0 0 0 3px rgba(45,126,247,0.12);
+    background: rgba(255,255,255,0.09);
+  }
+  .search-icon {
+    position: absolute; left: 1rem; top: 50%;
+    transform: translateY(-50%);
+    width: 16px; height: 16px;
+    opacity: 0.45;
+    pointer-events: none;
+  }
+  .search-clear {
+    position: absolute; right: 1rem; top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255,255,255,0.1);
+    border: none;
+    border-radius: 50%;
+    width: 20px; height: 20px;
+    color: rgba(255,255,255,0.6);
+    font-size: 12px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .search-clear:hover { background: rgba(45,126,247,0.3); color: #fff; }
+
+  .stats-strip {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 2.5rem;
+    animation: fadeInDown 0.7s 0.24s cubic-bezier(0.22,1,0.36,1) both;
+    flex-wrap: wrap;
+  }
+  .stat-pill {
+    display: flex; align-items: center; gap: 0.45rem;
+    background: rgba(45,126,247,0.1);
+    border: 1px solid rgba(45,126,247,0.22);
+    border-radius: 50px;
+    padding: 0.35rem 1rem;
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.6);
+  }
+  .stat-pill strong { color: #7ab8fc; font-weight: 700; }
+
   .annex-card {
     background: rgba(255,255,255,0.04);
     backdrop-filter: blur(14px);
@@ -38,23 +167,134 @@ const styles = `
     border-radius: 18px;
     overflow: hidden;
     box-shadow: 0 8px 40px rgba(0,0,0,0.4);
-    transition: transform 0.25s, box-shadow 0.25s;
+    transition: transform 0.28s cubic-bezier(0.22,1,0.36,1), box-shadow 0.28s;
+    animation: scaleIn 0.5s cubic-bezier(0.22,1,0.36,1) both;
   }
   .annex-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 16px 50px rgba(0,0,0,0.5), 0 0 30px rgba(45,126,247,0.18);
+    transform: translateY(-7px) scale(1.012);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.55), 0 0 35px rgba(45,126,247,0.22);
+    border-color: rgba(45,126,247,0.25);
+  }
+  .annex-card:hover .card-img img {
+    transform: scale(1.07);
+  }
+  .card-img img {
+    transition: transform 0.5s cubic-bezier(0.22,1,0.36,1);
   }
   .card-img-overlay::after {
     content: '';
     position: absolute; inset: 0;
-    background: linear-gradient(to bottom, transparent 40%, rgba(5,12,26,0.7) 100%);
+    background: linear-gradient(to bottom, transparent 30%, rgba(5,12,26,0.8) 100%);
   }
-  .badge-glass {
-    background: rgba(45,126,247,0.25);
+
+  /* ── Gender badge ── */
+  .badge-gender {
+    background: rgba(45,126,247,0.35);
+    border: 1.5px solid rgba(45,126,247,0.75);
+    color: #e0f0ff;
+    backdrop-filter: blur(10px);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    padding: 0.32rem 0.85rem;
+    border-radius: 999px;
+    text-shadow: 0 0 8px rgba(45,126,247,0.8);
+  }
+
+  /* ── Available badge — green glowy ── */
+  .badge-available {
+    background: rgba(16,185,129,0.25);
+    border: 1.5px solid rgba(16,185,129,0.65);
+    color: #6ee7b7;
+    backdrop-filter: blur(10px);
+    display: flex; align-items: center; gap: 5px;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 0.32rem 0.75rem;
+    border-radius: 999px;
+    animation: green-pulse 2.2s ease-in-out infinite;
+    text-shadow: 0 0 8px rgba(16,185,129,0.7);
+  }
+  .badge-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #34d399;
+    box-shadow: 0 0 6px 2px rgba(52,211,153,0.8);
+    flex-shrink: 0;
+  }
+
+  /* ── Location pill — green glowy ── */
+  .location-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    margin: 0 0 0.65rem !important;
+    padding: 0.32rem 0.75rem !important;
+    background: rgba(16,185,129,0.12) !important;
+    border: 1.5px solid rgba(16,185,129,0.45) !important;
+    border-radius: 999px !important;
+    width: fit-content !important;
+    max-width: 100% !important;
+    animation: loc-glow 2.4s ease-in-out infinite !important;
+  }
+  .location-icon {
+    flex-shrink: 0;
+    color: #34d399 !important;
+    filter: drop-shadow(0 0 4px rgba(52,211,153,0.9)) !important;
+  }
+  .location-text {
+    font-size: 0.76rem !important;
+    font-weight: 700 !important;
+    color: #6ee7b7 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    text-shadow: 0 0 10px rgba(16,185,129,0.7) !important;
+    letter-spacing: 0.01em !important;
+  }
+
+  /* ── Coloured amenity chips ── */
+  .amenity-chip {
+    border-radius: 6px;
+    padding: 0.18rem 0.55rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: transform 0.2s;
+  }
+  .amenity-chip:hover { transform: scale(1.08); }
+
+  .chip-blue {
+    background: rgba(45,126,247,0.15);
     border: 1px solid rgba(45,126,247,0.45);
     color: #7ab8fc;
-    backdrop-filter: blur(8px);
   }
+  .chip-purple {
+    background: rgba(168,85,247,0.15);
+    border: 1px solid rgba(168,85,247,0.45);
+    color: #d8b4fe;
+  }
+  .chip-emerald {
+    background: rgba(16,185,129,0.15);
+    border: 1px solid rgba(16,185,129,0.45);
+    color: #6ee7b7;
+  }
+  .chip-rose {
+    background: rgba(244,63,94,0.15);
+    border: 1px solid rgba(244,63,94,0.45);
+    color: #fda4af;
+  }
+  .chip-amber {
+    background: rgba(245,158,11,0.15);
+    border: 1px solid rgba(245,158,11,0.45);
+    color: #fcd34d;
+  }
+  .chip-cyan {
+    background: rgba(6,182,212,0.15);
+    border: 1px solid rgba(6,182,212,0.45);
+    color: #67e8f9;
+  }
+
   .btn-glass-outline {
     background: transparent;
     border: 1px solid rgba(45,126,247,0.35);
@@ -65,15 +305,17 @@ const styles = `
     background: rgba(45,126,247,0.12);
     border-color: rgba(45,126,247,0.6);
     color: #93c3fd;
+    transform: scale(1.03);
   }
   .btn-glow {
-    background: #2d7ef7;
+    background: linear-gradient(135deg, #2d7ef7 0%, #1a5fd4 100%);
     box-shadow: 0 0 20px rgba(45,126,247,0.35);
     transition: all 0.18s;
   }
   .btn-glow:hover {
-    background: #4a96ff;
-    box-shadow: 0 0 28px rgba(45,126,247,0.55);
+    background: linear-gradient(135deg, #4a96ff 0%, #2d7ef7 100%);
+    box-shadow: 0 0 32px rgba(45,126,247,0.6);
+    transform: scale(1.04);
   }
   .back-glass {
     background: rgba(255,255,255,0.05);
@@ -87,13 +329,78 @@ const styles = `
     border-color: rgba(45,126,247,0.4);
     color: #fff;
   }
+
+  .skeleton {
+    background: rgba(255,255,255,0.06);
+    border-radius: 18px;
+    overflow: hidden;
+    position: relative;
+  }
+  .skeleton::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%);
+    background-size: 600px 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  .empty-state {
+    animation: fadeInUp 0.5s ease both;
+    text-align: center;
+    padding: 5rem 0;
+  }
+  .empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    animation: float 3s ease-in-out infinite;
+    display: block;
+  }
+
+  .result-label {
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.3);
+    text-align: center;
+    margin-bottom: 1.2rem;
+    animation: fadeInDown 0.5s 0.3s both;
+  }
+  .result-label span { color: #5ba4fa; font-weight: 600; }
+
+  .section-divider {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(45,126,247,0.2), transparent);
+    margin: 2rem 0;
+  }
 `;
+
+const DEFAULT_AMENITIES = ['WiFi', 'AC', 'Parking', 'Security'];
+const CHIP_COLOURS = ['chip-blue', 'chip-purple', 'chip-emerald', 'chip-rose', 'chip-amber', 'chip-cyan'];
+
+const generateDesc = (annex) => {
+  if (annex.description) return annex.description;
+  const loc = annex.selectedAddress || 'near SLIIT Malabe Campus';
+  const price = Number(annex.price || 0).toLocaleString();
+  return `A comfortable annex located ${loc}, offering a peaceful living environment at Rs. ${price}/mo. Ideal for students seeking quality accommodation close to campus.`;
+};
+
+const cardDelay = (i) => `${0.05 + i * 0.07}s`;
+
+function SkeletonGrid() {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem' }}>
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="skeleton" style={{ height: 340 }} />
+      ))}
+    </div>
+  );
+}
 
 function AnnexBookingPage() {
   const navigate = useNavigate();
   const [annexes, setAnnexes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     const styleEl = document.createElement('style');
@@ -145,99 +452,236 @@ function AnnexBookingPage() {
     });
   };
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return annexes;
+    return annexes.filter(
+      (a) =>
+        (a.title || '').toLowerCase().includes(q) ||
+        (a.selectedAddress || '').toLowerCase().includes(q)
+    );
+  }, [annexes, search]);
+
   return (
     <div className="annex-wrap">
-      {/* Background glows */}
       <div className="hero-bg" />
       <div className="hero-glow-orb" />
       <div className="cta-glow-orb" />
+      <div className="mid-glow-orb" />
 
-      <div style={{ position: 'relative', zIndex: 2, maxWidth: 1240, margin: '0 auto', padding: '2.5rem 1.5rem 3rem' }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '2rem' }}>
+      <div style={{ position: 'relative', zIndex: 2, maxWidth: 1240, margin: '0 auto', padding: '2.5rem 1.5rem 4rem' }}>
+
+        {/* ── Header ── */}
+        <div className="header-animate" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '2.5rem' }}>
           <div>
-            <p style={{ fontSize: 12, color: 'rgba(45,126,247,0.85)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
-              Bookings
+            <p style={{ fontSize: 11, color: 'rgba(45,126,247,0.85)', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+              ✦ &nbsp;Student Accommodation
             </p>
-            <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#fff', textShadow: '0 0 40px rgba(45,126,247,0.5)' }}>
+            <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: '#fff', textShadow: '0 0 50px rgba(45,126,247,0.45)', letterSpacing: '-0.01em', margin: 0 }}>
               Annex Booking Gallery
             </h1>
           </div>
-          <Link to="/" className="back-glass" style={{ padding: '0.5rem 1.1rem', borderRadius: 10, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+          <Link to="/" className="back-glass" style={{ padding: '0.5rem 1.2rem', borderRadius: 10, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
             ← Back to Home
           </Link>
         </div>
 
-        {/* States */}
-        {loading && (
-          <div style={{ padding: '5rem 0', textAlign: 'center', color: 'rgba(255,255,255,0.35)', fontSize: 14 }}>
-            Loading annexes...
+        {/* ── Hero tagline ── */}
+        <div className="hero-tagline">
+          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.45)', maxWidth: 560, margin: '0 auto', lineHeight: 1.75 }}>
+            Discover comfortable, affordable annexes located steps from the SLIIT Malabe Campus.
+            Browse verified listings, explore amenities, and book your perfect student home — all in one place.
+          </p>
+        </div>
+
+        {/* ── Stats strip ── */}
+        {!loading && !error && (
+          <div className="stats-strip">
+            <div className="stat-pill"><strong>{annexes.length}</strong> Listings Available</div>
+            <div className="stat-pill"><strong>24/7</strong> Support</div>
+            <div className="stat-pill"><strong>Verified</strong> Properties</div>
+            <div className="stat-pill"><strong>SLIIT</strong> Campus Proximity</div>
           </div>
         )}
+
+        {/* ── Search bar ── */}
+        <div className="search-wrap">
+          <svg className="search-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="9" cy="9" r="6" stroke="white" strokeWidth="1.8"/>
+            <path d="M13.5 13.5L17 17" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+          <input
+            className="search-input"
+            type="text"
+            placeholder="Search by name or location..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {search && (
+            <button className="search-clear" onClick={() => setSearch('')} aria-label="Clear search">
+              ✕
+            </button>
+          )}
+        </div>
+
+        <hr className="section-divider" />
+
+        {loading && <SkeletonGrid />}
+
         {!loading && error && (
-          <div style={{ padding: '5rem 0', textAlign: 'center', color: 'rgba(255,100,100,0.7)', fontSize: 14 }}>
-            {error}
-          </div>
-        )}
-        {!loading && !error && annexes.length === 0 && (
-          <div style={{ padding: '5rem 0', textAlign: 'center', color: 'rgba(255,255,255,0.35)', fontSize: 14 }}>
-            No annexes available.
+          <div className="empty-state">
+            <span className="empty-icon">⚠️</span>
+            <p style={{ color: 'rgba(255,100,100,0.7)', fontSize: 14 }}>{error}</p>
           </div>
         )}
 
-        {/* Grid */}
-        {!loading && !error && annexes.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.25rem' }}>
-            {annexes.map((annex) => (
-              <article key={annex._id} className="annex-card">
-                {/* Image */}
-                <div className="card-img-overlay" style={{ position: 'relative', height: 180, overflow: 'hidden' }}>
-                  <img
-                    src={getImageUrl(annex)}
-                    alt={annex.title}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                  />
-                  {annex.preferredGender && (
-                    <span className="badge-glass" style={{ position: 'absolute', top: 12, left: 12, zIndex: 2, padding: '0.3rem 0.75rem', borderRadius: 999, fontSize: 11, fontWeight: 600 }}>
-                      {annex.preferredGender}
+        {!loading && !error && filtered.length === 0 && (
+          <div className="empty-state">
+            <span className="empty-icon">🔍</span>
+            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 14 }}>
+              {search ? `No annexes matching "${search}"` : 'No annexes available.'}
+            </p>
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                style={{ marginTop: '0.75rem', background: 'rgba(45,126,247,0.15)', border: '1px solid rgba(45,126,247,0.3)', color: '#5ba4fa', borderRadius: 8, padding: '0.4rem 1rem', fontSize: 13, cursor: 'pointer' }}
+              >
+                Clear search
+              </button>
+            )}
+          </div>
+        )}
+
+        {!loading && !error && filtered.length > 0 && (
+          <p className="result-label">
+            Showing <span>{filtered.length}</span> {filtered.length === 1 ? 'annex' : 'annexes'}
+            {search && <> matching <span>"{search}"</span></>}
+          </p>
+        )}
+
+        {/* ── 3-column Grid ── */}
+        {!loading && !error && filtered.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.3rem' }}>
+            {filtered.map((annex, i) => {
+              const amenities =
+                Array.isArray(annex.features) && annex.features.length > 0
+                  ? annex.features.slice(0, 4)
+                  : Array.isArray(annex.amenities) && annex.amenities.length > 0
+                  ? annex.amenities.slice(0, 4)
+                  : DEFAULT_AMENITIES;
+
+              const desc = generateDesc(annex);
+
+              return (
+                <article key={annex._id} className="annex-card" style={{ animationDelay: cardDelay(i) }}>
+
+                  {/* ── Image ── */}
+                  <div className="card-img card-img-overlay" style={{ position: 'relative', height: 190, overflow: 'hidden' }}>
+                    <img
+                      src={getImageUrl(annex)}
+                      alt={annex.title}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      onError={(e) => { e.target.src = FALLBACK_IMAGE; }}
+                    />
+
+                    {/* ── Gender badge ── */}
+                    {annex.preferredGender && (
+                      <span
+                        className="badge-gender"
+                        style={{ position: 'absolute', top: 12, left: 12, zIndex: 2 }}
+                      >
+                        {annex.preferredGender}
+                      </span>
+                    )}
+
+                    {/* ── Available badge ── */}
+                    <span
+                      className="badge-available"
+                      style={{ position: 'absolute', top: 12, right: 12, zIndex: 2 }}
+                    >
+                      <span className="badge-dot" />
+                      Available
                     </span>
-                  )}
-                </div>
 
-                {/* Body */}
-                <div style={{ padding: '1rem 1.1rem 1.1rem' }}>
-                  <h2 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#e8eeff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {annex.title}
-                  </h2>
-                  <p style={{ color: '#2d7ef7', fontWeight: 700, fontSize: '0.85rem', margin: '0.3rem 0 0.2rem' }}>
-                    Rs. {Number(annex.price || 0).toLocaleString()} /mo
-                  </p>
-                  <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {annex.selectedAddress || 'Near SLIIT Malabe Campus'}
-                  </p>
-
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.85rem' }}>
-                    <button
-                      type="button"
-                      onClick={() => handleViewDetails(annex)}
-                      className="btn-glass-outline"
-                      style={{ flex: 1, padding: '0.5rem', borderRadius: 9, fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
-                    >
-                      View Details
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleBookNow(annex)}
-                      className="btn-glow"
-                      style={{ flex: 1, padding: '0.5rem', borderRadius: 9, fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', color: '#fff', border: 'none' }}
-                    >
-                      Book Now
-                    </button>
+                    {/* Price overlay */}
+                    <div style={{ position: 'absolute', bottom: 12, left: 12, zIndex: 2 }}>
+                      <span style={{ background: 'rgba(5,12,26,0.75)', border: '1px solid rgba(45,126,247,0.3)', backdropFilter: 'blur(8px)', borderRadius: 8, padding: '0.28rem 0.65rem', fontSize: '0.8rem', fontWeight: 700, color: '#7ab8fc' }}>
+                        Rs. {Number(annex.price || 0).toLocaleString()} /mo
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
+
+                  {/* ── Body ── */}
+                  <div style={{ padding: '1rem 1.1rem 1.1rem' }}>
+
+                    {/* Title */}
+                    <h2 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e8eeff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: '0 0 0.5rem' }}>
+                      {annex.title}
+                    </h2>
+
+                    {/* ── Location — green glowy pill ── */}
+                    <div className="location-row">
+                      <svg
+                        className="location-icon"
+                        width="12" height="12"
+                        viewBox="0 0 24 24" fill="currentColor"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                        <circle cx="12" cy="9" r="2.5" fill="#050c1a"/>
+                      </svg>
+                      <span className="location-text" title={annex.selectedAddress || 'Near SLIIT Malabe Campus'}>
+                        {annex.selectedAddress || 'Near SLIIT Malabe Campus'}
+                      </span>
+                    </div>
+
+                    {/* Description */}
+                    <p style={{ fontSize: '0.76rem', color: 'rgba(255,255,255,0.42)', lineHeight: 1.65, margin: '0 0 0.85rem', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {desc}
+                    </p>
+
+                    {/* ── Coloured chips ── */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.9rem' }}>
+                      {amenities.map((a, idx) => (
+                        <span key={idx} className={`amenity-chip ${CHIP_COLOURS[idx % CHIP_COLOURS.length]}`}>
+                          {a}
+                        </span>
+                      ))}
+                    </div>
+
+                    <hr style={{ border: 'none', height: '1px', background: 'rgba(255,255,255,0.07)', margin: '0 0 0.9rem' }} />
+
+                    {/* CTA buttons */}
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleViewDetails(annex)}
+                        className="btn-glass-outline"
+                        style={{ flex: 1, padding: '0.52rem', borderRadius: 10, fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        View Details
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleBookNow(annex)}
+                        className="btn-glow"
+                        style={{ flex: 1, padding: '0.52rem', borderRadius: 10, fontSize: '0.76rem', fontWeight: 700, cursor: 'pointer', color: '#fff', border: 'none' }}
+                      >
+                        Book Now →
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
+        )}
+
+        {/* ── Footer note ── */}
+        {!loading && !error && annexes.length > 0 && (
+          <p style={{ textAlign: 'center', fontSize: '0.74rem', color: 'rgba(255,255,255,0.2)', marginTop: '3rem' }}>
+            All listings are verified and updated regularly. Prices may vary based on availability and lease duration.
+          </p>
         )}
       </div>
     </div>

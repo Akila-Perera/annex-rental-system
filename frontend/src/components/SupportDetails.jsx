@@ -1,255 +1,655 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
 function SupportDetails() {
   const navigate = useNavigate();
-  const [supports, setSupports]         = useState([]);
-  const [loading, setLoading]           = useState(true);
-  const [editItem, setEditItem]         = useState(null);
-  const [editForm, setEditForm]         = useState({});
-  const [editLoading, setEditLoading]   = useState(false);
-  const [editError, setEditError]       = useState('');
-  const [focusedField, setFocusedField] = useState('');
+
+  // ── Tab Management ──
+  const [activeTab, setActiveTab] = useState('support');
+  const [reviewSubTab, setReviewSubTab] = useState('pending');
+
+  // ── Support State ──
+  const [supports, setSupports] = useState([]);
+  const [supportLoading, setSupportLoading] = useState(true);
+
+  // ── Read state (persisted in localStorage) ──
+  const [readIds, setReadIds] = useState(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem('uninest_read_ids') || '[]'));
+    } catch {
+      return new Set();
+    }
+  });
+
+  // ── Review State ──
+  const [reviews, setReviews] = useState({ pending: [], approved: [], rejected: [], flagged: [] });
+  const [stats, setStats] = useState({ totalReviews: 0, pendingReviews: 0, approvedReviews: 0, rejectedReviews: 0, flaggedReviews: 0 });
+  const [reviewLoading, setReviewLoading] = useState(false);
+
+  // ── Edit Modal State ──
+  const [editItem, setEditItem] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [editLoading, setEditLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // ── Delete Confirm Modal State ──
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // ── Admin guard ──
   useEffect(() => {
     if (localStorage.getItem('uninest_admin') !== 'true') {
       navigate('/admin-login');
     }
+  }, [navigate]);
+
+  // ── Persist readIds to localStorage ──
+  useEffect(() => {
+    localStorage.setItem('uninest_read_ids', JSON.stringify([...readIds]));
+  }, [readIds]);
+
+  // ── Support Fetch ──
+  const fetchSupports = useCallback(async () => {
+    setSupportLoading(true);
+    try {
+      const res = await axios.get('http://localhost:5000/api/support');
+      setSupports(res.data.data || []);
+    } catch (err) {
+      console.error('Support Fetch Error:', err);
+      setSupports([]);
+    } finally {
+      setSupportLoading(false);
+    }
   }, []);
 
-  // ── Logout ──
+  // ── Review Fetch ──
+  const fetchReviews = useCallback(async () => {
+    setReviewLoading(true);
+    try {
+      const baseUrl = 'http://localhost:5000/api';
+      const [revRes, statsRes] = await Promise.all([
+        axios.get(`${baseUrl}/admin/reviews?status=${reviewSubTab}`),
+        axios.get(`${baseUrl}/admin/stats`),
+      ]);
+      setReviews((prev) => ({ ...prev, [reviewSubTab]: revRes.data.reviews || [] }));
+      setStats(statsRes.data.stats || {});
+    } catch (err) {
+      console.error('Review Fetch Error:', err);
+    } finally {
+      setReviewLoading(false);
+    }
+  }, [reviewSubTab]);
+
+  useEffect(() => {
+    if (activeTab === 'support') fetchSupports();
+    else fetchReviews();
+  }, [activeTab, reviewSubTab, fetchSupports, fetchReviews]);
+
+  // ── Mark as Read / Unread toggle ──
+  const toggleRead = (id) => {
+    setReadIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // ── Mark all as read ──
+  const markAllRead = () => {
+    setReadIds(new Set(supports.map((s) => s._id)));
+  };
+
+  // ── Computed read/unread counts ──
+  const readCount = supports.filter((s) => readIds.has(s._id)).length;
+  const unreadCount = supports.length - readCount;
+
+  // ── DELETE — open confirm modal ──
+  const handleDeleteClick = (item) => {
+    setDeleteTarget(item);
+  };
+
+  // ── DELETE — confirmed ──
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      await axios.delete(`http://localhost:5000/api/support/${deleteTarget._id}`);
+      setSupports((prev) => prev.filter((s) => s._id !== deleteTarget._id));
+      setReadIds((prev) => {
+        const next = new Set(prev);
+        next.delete(deleteTarget._id);
+        return next;
+      });
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error('Delete failed:', err);
+      alert('Failed to delete support request.');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // ── DELETE — cancelled ──
+  const handleDeleteCancel = () => {
+    setDeleteTarget(null);
+  };
+
+  // ── OPEN edit modal ──
+  const handleOpenEdit = (item) => {
+    setEditItem(item);
+    setEditForm({
+      firstName: item.firstName || '',
+      lastName: item.lastName || '',
+      email: item.email || '',
+      phoneNumber: item.phoneNumber || '',
+      description: item.description || '',
+    });
+    setError('');
+  };
+
+  // ── UPDATE support ──
+  const handleUpdate = async () => {
+    setEditLoading(true);
+    setError('');
+    try {
+      await axios.put(`http://localhost:5000/api/support/${editItem._id}`, editForm);
+      setEditItem(null);
+      fetchSupports();
+    } catch (err) {
+      console.error('Update failed:', err);
+      setError('Failed to update. Please try again.');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  // ── Review Actions ──
+  const handleReviewAction = async (id, action) => {
+    let note = 'Actioned by admin';
+    if (action !== 'approve') {
+      note = prompt(`Enter reason for ${action}:`) || '';
+      if (!note) return;
+    }
+    try {
+      await axios.put(`http://localhost:5000/api/admin/reviews/${id}/${action}`, { moderationNotes: note });
+      fetchReviews();
+    } catch (err) {
+      alert(`Failed to ${action} review`);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('uninest_admin');
-    navigate('/');          // goes to Home after logout
+    navigate('/');
   };
-
-  const fetchSupports = () => {
-    setLoading(true);
-    axios.get('http://localhost:5000/api/support')
-      .then(res => { setSupports(res.data.data); setLoading(false); })
-      .catch(()  => setLoading(false));
-  };
-
-  useEffect(() => { fetchSupports(); }, []);
 
   const formatDate = (d) =>
-    new Date(d).toLocaleString('en-US', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this submission?')) return;
-    try {
-      await axios.delete(`http://localhost:5000/api/support/${id}`);
-      setSupports(prev => prev.filter(s => s._id !== id));
-    } catch { alert('Failed to delete. Please try again.'); }
-  };
-
-  const openEdit = (item) => {
-    setEditItem(item);
-    setEditForm({ firstName:item.firstName, lastName:item.lastName, email:item.email, phoneNumber:item.phoneNumber, description:item.description });
-    setEditError('');
-  };
-  const closeEdit = () => { setEditItem(null); setEditError(''); };
-
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    setEditLoading(true); setEditError('');
-    try {
-      const res = await axios.put(`http://localhost:5000/api/support/${editItem._id}`, editForm);
-      setSupports(prev => prev.map(s => s._id === editItem._id ? res.data.data : s));
-      closeEdit();
-    } catch { setEditError('Failed to update. Please try again.'); }
-    finally   { setEditLoading(false); }
-  };
-
-  const inputCls = (name) =>
-    `w-full px-3.5 py-2.5 bg-white/4 rounded-lg text-[#f0f4ff] text-[0.95rem] outline-none transition-all duration-300 ${
-      focusedField === name
-        ? 'border-[1.5px] border-blue-500/60 shadow-[0_0_0_3px_rgba(45,126,247,0.15)]'
-        : 'border-[1.5px] border-white/7'
-    }`;
+    d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#f0f4ff] px-4 py-10 relative overflow-hidden">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap');
         .font-display { font-family: 'Syne', sans-serif; }
         body { font-family: 'DM Sans', sans-serif; }
-        @keyframes spin      { to{transform:rotate(360deg);} }
-        @keyframes pulseGlow { 0%,100%{opacity:.4;transform:scale(1);} 50%{opacity:.7;transform:scale(1.08);} }
-        .animate-spin-slow   { animation: spin 0.8s linear infinite; }
-        .animate-pulse-glow  { animation: pulseGlow 5s ease-in-out infinite; }
-        .glow-orb { background: radial-gradient(circle, rgba(45,126,247,0.12) 0%, transparent 70%); }
+        .glow-blue { background: radial-gradient(circle, rgba(45,126,247,0.12) 0%, transparent 70%); }
+        .glow-purple { background: radial-gradient(circle, rgba(147,51,234,0.12) 0%, transparent 70%); }
+
+        /* Read badge pulse */
+        @keyframes badgePop {
+          0% { transform: scale(0.8); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .badge-pop { animation: badgePop 0.2s ease-out forwards; }
+
+        /* Unread card left border */
+        .card-unread { border-left: 3px solid #3b82f6 !important; }
+        .card-read   { border-left: 3px solid #22c55e !important; opacity: 0.75; }
       `}</style>
 
-      <div className="fixed -top-[200px] left-1/2 -translate-x-1/2 w-[900px] h-[600px] rounded-full glow-orb animate-pulse-glow pointer-events-none z-0" />
+      {/* Background glow */}
+      <div className={`fixed -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[600px] blur-3xl pointer-events-none z-0 transition-all duration-1000 ${activeTab === 'support' ? 'glow-blue' : 'glow-purple'}`} />
 
       <div className="max-w-[1100px] mx-auto relative z-10">
 
-        {/* ── Header with Logout ── */}
-        <div className="flex justify-between items-end mb-8 flex-wrap gap-4">
+        {/* ── Header ── */}
+        <div className="flex justify-between items-start mb-8">
           <div>
-            <div className="inline-block mb-3 px-3.5 py-1.5 rounded-full border border-blue-500/40 bg-blue-500/10 text-blue-300 text-[0.78rem] font-medium tracking-[0.03em]">📋 Admin Panel</div>
-            <h2 className="font-display text-[2rem] font-extrabold text-[#f0f4ff] mb-1.5 leading-[1.15]">Support Submissions</h2>
-            <p className="text-[#8a96b0] text-[0.92rem]">All submitted student support requests</p>
+            <div className="inline-block mb-3 px-3 py-1 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-300 text-xs font-bold">
+              UNINEST COMMAND CENTER
+            </div>
+            <h2 className="font-display text-4xl font-extrabold">
+              {activeTab === 'support' ? 'Support Inbox' : 'Review Moderation'}
+            </h2>
           </div>
-          <div className="flex gap-2.5 flex-wrap">
-            <button onClick={() => navigate('/support')}
-              className="px-6 py-2.5 bg-blue-500 text-white border-none rounded-[14px] font-semibold cursor-pointer text-[0.92rem] whitespace-nowrap hover:bg-blue-400 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-500/35 transition-all duration-300">
-              + New Request
-            </button>
-            
-            {/* ── MANAGE REVIEWS BUTTON ── */}
-            <button onClick={() => navigate('/admin')}
-              className="px-6 py-2.5 bg-purple-500 text-white border-none rounded-[14px] font-semibold cursor-pointer text-[0.92rem] whitespace-nowrap hover:bg-purple-400 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-purple-500/35 transition-all duration-300">
-              📝 Manage Reviews
-            </button>
-            
-            {/* ── LOGOUT BUTTON ── */}
-            <button onClick={handleLogout}
-              className="px-6 py-2.5 bg-red-500/10 border border-red-500/30 text-red-400 rounded-[14px] font-semibold cursor-pointer text-[0.92rem] whitespace-nowrap hover:bg-red-600/85 hover:text-white hover:border-red-600/85 hover:-translate-y-0.5 transition-all duration-300">
-              🚪 Logout
-            </button>
-          </div>
+          <button
+            onClick={handleLogout}
+            className="px-6 py-2 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl font-bold hover:bg-red-500 hover:text-white transition-all"
+          >
+            Logout
+          </button>
         </div>
 
-        {/* Stats bar */}
-        {!loading && supports.length > 0 && (
-          <div className="bg-[#161b25] border border-white/7 rounded-[14px] flex mb-9 overflow-hidden">
-            {[
-              { num: supports.length, label:'Total Submissions' },
-              { num: supports.filter(s=>{ const d=new Date(s.createdAt),n=new Date(); return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear(); }).length, label:'This Month' },
-              { num: new Set(supports.map(s=>s.email)).size, label:'Unique Students' },
-            ].map((s,i)=>(
-              <div key={s.label} className={`flex-1 text-center py-5 px-5 ${i>0?'border-l border-white/7':''}`}>
-                <div className="font-display text-[1.6rem] font-extrabold text-blue-400 mb-1">{s.num}</div>
-                <div className="text-[#8a96b0] text-[0.82rem]">{s.label}</div>
+        {/* ── Top Tabs ── */}
+        <div className="flex gap-2 bg-[#161b25]/80 backdrop-blur-md p-1.5 rounded-2xl border border-white/5 w-fit mb-10">
+          <button
+            onClick={() => setActiveTab('support')}
+            className={`px-8 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'support' ? 'bg-blue-600 shadow-lg shadow-blue-600/30' : 'text-[#8a96b0] hover:bg-white/5'}`}
+          >
+            🎧 Support
+            {unreadCount > 0 && activeTab !== 'support' && (
+              <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] font-bold">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('reviews')}
+            className={`px-8 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'reviews' ? 'bg-purple-600 shadow-lg shadow-purple-600/30' : 'text-[#8a96b0] hover:bg-white/5'}`}
+          >
+            ⭐ Reviews
+          </button>
+        </div>
+
+        {/* ══════════════════════════════════════
+            SUPPORT TAB
+        ══════════════════════════════════════ */}
+        {activeTab === 'support' && (
+          <div>
+            {/* Stats bar — replaced "Open" with Read/Unread counts */}
+            <div className="grid grid-cols-4 gap-1 bg-[#161b25] border border-white/5 rounded-2xl mb-8 overflow-hidden">
+              <div className="p-6 text-center">
+                <div className="text-2xl font-display font-bold text-blue-400">{supports.length}</div>
+                <div className="text-xs text-[#5a6478] uppercase font-bold">Total Requests</div>
               </div>
-            ))}
+              <div className="p-6 text-center border-l border-white/5">
+                <div className="text-2xl font-display font-bold text-blue-400">{new Set(supports.map((s) => s.email)).size}</div>
+                <div className="text-xs text-[#5a6478] uppercase font-bold">Unique Users</div>
+              </div>
+              <div className="p-6 text-center border-l border-white/5">
+                <div className="text-2xl font-display font-bold text-red-400 flex items-center justify-center gap-1">
+                  <span className="inline-block w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                  {unreadCount}
+                </div>
+                <div className="text-xs text-[#5a6478] uppercase font-bold">Unread</div>
+              </div>
+              <div className="p-6 text-center border-l border-white/5">
+                <div className="text-2xl font-display font-bold text-green-400">{readCount}</div>
+                <div className="text-xs text-[#5a6478] uppercase font-bold">Read</div>
+              </div>
+            </div>
+
+            {/* Action bar */}
+            {!supportLoading && supports.length > 0 && (
+              <div className="flex justify-between items-center mb-6">
+                <p className="text-sm text-[#5a6478]">
+                  {unreadCount > 0
+                    ? `${unreadCount} unread request${unreadCount > 1 ? 's' : ''}`
+                    : 'All requests marked as read'}
+                </p>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllRead}
+                    className="px-4 py-1.5 text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-500 hover:text-white transition-all"
+                  >
+                    Mark All as Read
+                  </button>
+                )}
+              </div>
+            )}
+
+            {supportLoading ? (
+              <div className="text-center py-20">
+                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+              </div>
+            ) : supports.length === 0 ? (
+              <div className="text-center py-20 bg-white/2 rounded-3xl border border-dashed border-white/10">
+                <p className="text-[#8a96b0]">No support requests found.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {supports.map((item) => {
+                  const isRead = readIds.has(item._id);
+                  return (
+                    <div
+                      key={item._id}
+                      className={`bg-[#1a2030] border border-white/5 p-6 rounded-[24px] transition-all group ${isRead ? 'card-read' : 'card-unread'}`}
+                    >
+                      {/* Avatar + name + read badge */}
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg flex-shrink-0 transition-colors ${isRead ? 'bg-green-600/80' : 'bg-blue-600'}`}>
+                          {item?.firstName?.[0] || '?'}{item?.lastName?.[0] || ''}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-bold text-[#f0f4ff]">{item?.firstName} {item?.lastName}</h4>
+                            {/* Read / Unread badge */}
+                            {isRead ? (
+                              <span className="badge-pop inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/15 border border-green-500/25 text-green-400 text-[10px] font-bold uppercase">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Read
+                              </span>
+                            ) : (
+                              <span className="badge-pop inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/25 text-blue-400 text-[10px] font-bold uppercase">
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                                Unread
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-[#5a6478] uppercase font-bold">{formatDate(item?.createdAt)}</p>
+                        </div>
+                      </div>
+
+                      {/* Contact */}
+                      <div className="text-sm text-[#8a96b0] mb-4 space-y-1">
+                        <p>📧 {item?.email}</p>
+                        <p>📞 {item?.phoneNumber}</p>
+                      </div>
+
+                      {/* Description */}
+                      <div className="bg-white/5 p-4 rounded-xl text-sm text-[#f0f4ff]/80 mb-6 leading-relaxed">
+                        {item?.description}
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex gap-2">
+                        {/* Mark as Read / Unread */}
+                        <button
+                          onClick={() => toggleRead(item._id)}
+                          className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all border ${
+                            isRead
+                              ? 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-600 hover:text-white hover:border-transparent'
+                              : 'bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-600 hover:text-white hover:border-transparent'
+                          }`}
+                        >
+                          {isRead ? '↩ Mark Unread' : '✓ Mark as Read'}
+                        </button>
+                        <button
+                          onClick={() => handleOpenEdit(item)}
+                          className="flex-1 py-2 bg-white/5 rounded-lg text-xs font-bold hover:bg-blue-600 transition-all border border-transparent"
+                        >
+                          Update
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(item)}
+                          className="flex-1 py-2 bg-white/5 rounded-lg text-xs font-bold hover:bg-red-600 transition-all border border-transparent"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
-        {/* States */}
-        {loading ? (
-          <div className="text-center py-20">
-            <div className="w-9 h-9 border-[3px] border-blue-500/20 border-t-blue-500 rounded-full mx-auto mb-4 animate-spin-slow" />
-            <p className="text-[#8a96b0]">Loading submissions...</p>
-          </div>
-        ) : supports.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-5xl mb-3">📭</p>
-            <p className="text-[#8a96b0] mb-5">No submissions yet.</p>
-            <button onClick={() => navigate('/support')} className="px-6 py-2.5 bg-blue-500 text-white rounded-[14px] font-semibold cursor-pointer hover:bg-blue-400 hover:-translate-y-0.5 transition-all duration-300">
-              Submit First Request
-            </button>
-          </div>
-        ) : (
-          <div className="grid gap-6" style={{gridTemplateColumns:'repeat(auto-fill, minmax(380px, 1fr))'}}>
-            {supports.map(item => (
-              <div key={item._id}
-                className="bg-[#1a2030] border border-white/7 rounded-[20px] p-6 shadow-[0_8px_32px_rgba(0,0,0,0.3)] cursor-default hover:border-blue-500/30 hover:-translate-y-1 hover:shadow-[0_20px_60px_rgba(0,0,0,0.4),0_0_0_1px_rgba(45,126,247,0.15)] hover:bg-[#1e2638] transition-all duration-300">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-[46px] h-[46px] rounded-[14px] bg-blue-500 text-white flex items-center justify-center font-display font-bold text-base flex-shrink-0 shadow-[0_4px_12px_rgba(45,126,247,0.3)]">
-                    {item.firstName[0]}{item.lastName[0]}
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-display font-bold text-[#f0f4ff] text-base mb-0.5">{item.firstName} {item.lastName}</p>
-                    <p className="text-[#5a6478] text-[0.75rem]">🕐 {formatDate(item.createdAt)}</p>
-                  </div>
-                  <span className="px-2.5 py-1 rounded-md text-[0.68rem] font-bold tracking-[0.05em] bg-green-500/20 text-green-400 border border-green-500/30 flex-shrink-0">Open</span>
-                </div>
-                <div className="h-px bg-white/7 mb-4" />
-                {[['📧 EMAIL', item.email], ['📞 PHONE', item.phoneNumber]].map(([label,val])=>(
-                  <div key={label} className="flex justify-between items-center mb-2.5 gap-3">
-                    <span className="text-[#5a6478] font-semibold text-[0.68rem] tracking-[0.07em] flex-shrink-0">{label}</span>
-                    <span className="text-[#f0f4ff] font-medium text-sm text-right break-all">{val}</span>
+        {/* ══════════════════════════════════════
+            REVIEWS TAB
+        ══════════════════════════════════════ */}
+        {activeTab === 'reviews' && (
+          <div>
+            {/* Stats bar */}
+            <div className="grid grid-cols-4 gap-1 bg-[#161b25] border border-white/5 rounded-2xl mb-8 overflow-hidden">
+              <div className="p-4 text-center">
+                <div className="text-xl font-display font-bold text-purple-400">{stats.pendingReviews || 0}</div>
+                <div className="text-[10px] text-[#5a6478] uppercase font-bold">Pending</div>
+              </div>
+              <div className="p-4 text-center border-l border-white/5">
+                <div className="text-xl font-display font-bold text-green-400">{stats.approvedReviews || 0}</div>
+                <div className="text-[10px] text-[#5a6478] uppercase font-bold">Approved</div>
+              </div>
+              <div className="p-4 text-center border-l border-white/5">
+                <div className="text-xl font-display font-bold text-red-400">{stats.rejectedReviews || 0}</div>
+                <div className="text-[10px] text-[#5a6478] uppercase font-bold">Rejected</div>
+              </div>
+              <div className="p-4 text-center border-l border-white/5">
+                <div className="text-xl font-display font-bold text-orange-400">{stats.flaggedReviews || 0}</div>
+                <div className="text-[10px] text-[#5a6478] uppercase font-bold">Flagged</div>
+              </div>
+            </div>
+
+            {/* Sub-tabs */}
+            <div className="flex gap-2 mb-8">
+              {['pending', 'approved', 'rejected', 'flagged'].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setReviewSubTab(s)}
+                  className={`px-5 py-2 rounded-full text-xs font-bold capitalize transition-all border ${
+                    reviewSubTab === s ? 'bg-purple-600 border-purple-600' : 'bg-white/5 border-white/10 text-[#8a96b0]'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+
+            {reviewLoading ? (
+              <div className="text-center py-20">
+                <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto" />
+              </div>
+            ) : reviews[reviewSubTab]?.length === 0 ? (
+              <div className="text-center py-20 bg-white/2 rounded-3xl border border-dashed border-white/10">
+                <p className="text-[#8a96b0]">No {reviewSubTab} reviews to show.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {reviews[reviewSubTab].map((rev) => (
+                  <div
+                    key={rev._id}
+                    className="bg-[#1a2030] border border-white/5 p-6 rounded-2xl flex flex-col md:flex-row justify-between gap-6"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex text-yellow-400 text-xs">{'★'.repeat(rev.ratings?.overall || 5)}</div>
+                        <span className="text-[10px] font-bold text-[#5a6478] uppercase tracking-widest">{formatDate(rev.createdAt)}</span>
+                      </div>
+                      <h4 className="font-bold text-lg mb-1">{rev.property?.title || 'Review Title'}</h4>
+                      <p className="text-[#8a96b0] text-sm italic mb-4">"{rev.comment}"</p>
+                      <div className="flex gap-4">
+                        {rev.pros?.length > 0 && (
+                          <p className="text-[11px] text-green-400"><span className="font-bold">PROS:</span> {rev.pros.join(', ')}</p>
+                        )}
+                        {rev.cons?.length > 0 && (
+                          <p className="text-[11px] text-red-400"><span className="font-bold">CONS:</span> {rev.cons.join(', ')}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {reviewSubTab === 'pending' && (
+                      <div className="flex md:flex-col gap-2 justify-center">
+                        <button onClick={() => handleReviewAction(rev._id, 'approve')} className="px-4 py-2 bg-green-500/20 text-green-400 border border-green-500/20 rounded-lg text-xs font-bold hover:bg-green-500 hover:text-white transition-all">Approve</button>
+                        <button onClick={() => handleReviewAction(rev._id, 'reject')} className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-xs font-bold hover:bg-red-500 hover:text-white transition-all">Reject</button>
+                        <button onClick={() => handleReviewAction(rev._id, 'flag')} className="px-4 py-2 bg-orange-500/20 text-orange-400 border border-orange-500/20 rounded-lg text-xs font-bold hover:bg-orange-500 hover:text-white transition-all">Flag</button>
+                      </div>
+                    )}
                   </div>
                 ))}
-                <div className="bg-white/3 border border-white/7 rounded-lg p-3.5 mt-3.5">
-                  <p className="text-[#5a6478] font-semibold text-[0.68rem] tracking-[0.07em] mb-2">📝 DESCRIPTION</p>
-                  <p className="text-[#8a96b0] text-sm leading-[1.6]">{item.description}</p>
-                </div>
-                <div className="flex gap-2.5 mt-4">
-                  <button onClick={() => openEdit(item)}
-                    className="flex-1 py-2.5 px-3 bg-blue-500/10 border border-blue-500/30 text-blue-300 rounded-lg text-sm font-medium cursor-pointer hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-all duration-300">
-                    ✏️ Update
-                  </button>
-                  <button onClick={() => handleDelete(item._id)}
-                    className="flex-1 py-2.5 px-3 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg text-sm font-medium cursor-pointer hover:bg-red-600/85 hover:text-white hover:border-red-600/85 transition-all duration-300">
-                    🗑️ Delete
-                  </button>
-                </div>
               </div>
-            ))}
+            )}
           </div>
         )}
-
-        <p className="text-center mt-10">
-          <a href="/" className="text-[#5a6478] text-sm hover:text-blue-300 transition-colors duration-200">← Back to Home</a>
-        </p>
       </div>
 
-      {/* Edit Modal */}
-      {editItem && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[1000] flex items-center justify-center p-5" onClick={closeEdit}>
-          <div className="bg-[#1a2030] border border-white/7 rounded-[20px] px-9 py-10 w-full max-w-[580px] shadow-[0_20px_60px_rgba(0,0,0,0.5),0_0_0_1px_rgba(45,126,247,0.1)] relative max-h-[90vh] overflow-y-auto"
-            onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-start mb-7 gap-4">
-              <div>
-                <div className="inline-block mb-2 px-3.5 py-1.5 rounded-full border border-blue-500/40 bg-blue-500/10 text-blue-300 text-[0.78rem] font-medium">✏️ Edit Submission</div>
-                <h3 className="font-display text-[1.4rem] font-extrabold text-[#f0f4ff] mt-1.5">Update Support Request</h3>
+      {/* ══════════════════════════════════════
+          DELETE CONFIRMATION MODAL
+      ══════════════════════════════════════ */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+          <div className="w-full max-w-sm bg-[#1a2030] border border-red-500/20 rounded-3xl p-8 shadow-2xl">
+
+            {/* Trash icon */}
+            <div className="flex items-center justify-center mb-5">
+              <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
               </div>
-              <button onClick={closeEdit}
-                className="w-[34px] h-[34px] bg-white/6 border border-white/10 text-[#8a96b0] rounded-lg cursor-pointer text-sm flex items-center justify-center flex-shrink-0 hover:bg-red-500/20 hover:text-red-400 transition-all duration-200">✕</button>
             </div>
-            {editError && (
-              <div className="bg-red-500/12 border border-red-500/30 text-red-400 px-3.5 py-2.5 rounded-lg mb-5 text-sm">{editError}</div>
-            )}
-            <form onSubmit={handleUpdate}>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                {[['firstName','FIRST NAME'],['lastName','LAST NAME']].map(([name,label])=>(
-                  <div key={name}>
-                    <label className="block text-[0.7rem] font-semibold text-[#5a6478] tracking-[0.08em] mb-1.5">{label}</label>
-                    <input type="text" value={editForm[name]} onChange={e=>setEditForm({...editForm,[name]:e.target.value})}
-                      onFocus={()=>setFocusedField(name)} onBlur={()=>setFocusedField('')}
-                      required className={inputCls(name)} />
-                  </div>
-                ))}
+
+            {/* Message */}
+            <div className="text-center mb-6">
+              <h3 className="font-display text-xl font-bold text-white mb-2">
+                Delete Support Request?
+              </h3>
+              <p className="text-sm text-[#8a96b0] leading-relaxed">
+                You are about to permanently delete the request from{' '}
+                <span className="text-white font-bold">
+                  {deleteTarget.firstName} {deleteTarget.lastName}
+                </span>
+                . This action <span className="text-red-400 font-semibold">cannot be undone</span>.
+              </p>
+            </div>
+
+            {/* Yes / No buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={handleDeleteCancel}
+                disabled={deleteLoading}
+                className="flex-1 py-3 rounded-xl border border-white/10 bg-transparent text-sm font-bold text-[#8a96b0] hover:bg-white/5 hover:text-white transition-all disabled:opacity-50"
+              >
+                No, Keep It
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={deleteLoading}
+                className="flex-1 py-3 rounded-xl bg-red-600 text-sm font-bold text-white hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+              >
+                {deleteLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Deleting…
+                  </>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M4 7h16" />
+                    </svg>
+                    Yes, Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════
+          EDIT MODAL
+      ══════════════════════════════════════ */}
+      {editItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+          <div className="w-full max-w-lg bg-[#1a2030] border border-white/10 rounded-3xl p-8 shadow-2xl relative">
+
+            {/* Close button */}
+            <button
+              onClick={() => { setEditItem(null); setError(''); }}
+              className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-[#8a96b0] hover:text-white transition-all text-lg"
+            >
+              ✕
+            </button>
+
+            {/* Modal header */}
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center font-bold">
+                {editItem?.firstName?.[0] || '?'}{editItem?.lastName?.[0] || ''}
               </div>
-              <div className="mb-4">
-                <label className="block text-[0.7rem] font-semibold text-[#5a6478] tracking-[0.08em] mb-1.5">EMAIL ADDRESS</label>
-                <input type="email" value={editForm.email} onChange={e=>setEditForm({...editForm,email:e.target.value})}
-                  onFocus={()=>setFocusedField('email')} onBlur={()=>setFocusedField('')}
-                  required className={inputCls('email')} />
+              <div>
+                <h3 className="font-display text-lg font-bold text-white">Edit Support Request</h3>
+                <p className="text-xs text-[#5a6478]">ID: {editItem._id}</p>
               </div>
-              <div className="mb-4">
-                <label className="block text-[0.7rem] font-semibold text-[#5a6478] tracking-[0.08em] mb-1.5">PHONE NUMBER</label>
-                <input type="tel" value={editForm.phoneNumber} onChange={e=>setEditForm({...editForm,phoneNumber:e.target.value})}
-                  onFocus={()=>setFocusedField('phoneNumber')} onBlur={()=>setFocusedField('')}
-                  required className={inputCls('phoneNumber')} />
+            </div>
+
+            {/* Form fields */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-[#5a6478] uppercase font-bold mb-1">First Name</label>
+                  <input
+                    type="text"
+                    value={editForm.firstName}
+                    onChange={(e) => setEditForm((p) => ({ ...p, firstName: e.target.value }))}
+                    className="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-[#5a6478] focus:border-blue-500 focus:outline-none transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-[#5a6478] uppercase font-bold mb-1">Last Name</label>
+                  <input
+                    type="text"
+                    value={editForm.lastName}
+                    onChange={(e) => setEditForm((p) => ({ ...p, lastName: e.target.value }))}
+                    className="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-[#5a6478] focus:border-blue-500 focus:outline-none transition-colors"
+                  />
+                </div>
               </div>
-              <div className="mb-4">
-                <label className="block text-[0.7rem] font-semibold text-[#5a6478] tracking-[0.08em] mb-1.5">DESCRIPTION</label>
-                <textarea value={editForm.description} onChange={e=>setEditForm({...editForm,description:e.target.value})}
-                  onFocus={()=>setFocusedField('description')} onBlur={()=>setFocusedField('')}
-                  required rows={4} className={`${inputCls('description')} resize-y leading-[1.6]`} />
+
+              <div>
+                <label className="block text-xs text-[#5a6478] uppercase font-bold mb-1">Email</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))}
+                  className="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-[#5a6478] focus:border-blue-500 focus:outline-none transition-colors"
+                />
               </div>
-              <div className="flex gap-3 mt-2">
-                <button type="button" onClick={closeEdit}
-                  className="flex-1 py-3.5 bg-transparent border border-white/7 text-[#8a96b0] rounded-[14px] text-[0.95rem] font-medium cursor-pointer hover:border-blue-500/40 hover:text-[#f0f4ff] transition-all duration-300">
+
+              <div>
+                <label className="block text-xs text-[#5a6478] uppercase font-bold mb-1">Phone Number</label>
+                <input
+                  type="tel"
+                  value={editForm.phoneNumber}
+                  onChange={(e) => setEditForm((p) => ({ ...p, phoneNumber: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
+                  className="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-[#5a6478] focus:border-blue-500 focus:outline-none transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-[#5a6478] uppercase font-bold mb-1">Description</label>
+                <textarea
+                  rows={4}
+                  value={editForm.description}
+                  onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))}
+                  className="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-[#5a6478] focus:border-blue-500 focus:outline-none transition-colors resize-none"
+                />
+              </div>
+
+              {/* Error */}
+              {error && (
+                <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-400">
+                  <span>⚠</span> {error}
+                </div>
+              )}
+
+              {/* Modal actions */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => { setEditItem(null); setError(''); }}
+                  className="flex-1 py-2.5 rounded-xl border border-white/10 bg-transparent text-sm font-bold text-[#8a96b0] hover:bg-white/5 transition-all"
+                >
                   Cancel
                 </button>
-                <button type="submit" disabled={editLoading}
-                  className={`flex-1 py-3.5 rounded-[14px] text-[0.95rem] font-semibold transition-all duration-300 ${
-                    editLoading
-                      ? 'bg-blue-500/35 text-white/50 cursor-not-allowed'
-                      : 'bg-blue-500 text-white cursor-pointer hover:bg-blue-400 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-500/35'
-                  }`}>
-                  {editLoading ? 'Saving...' : '💾 Save Changes'}
+                <button
+                  onClick={handleUpdate}
+                  disabled={editLoading}
+                  className="flex-1 py-2.5 rounded-xl bg-blue-600 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                >
+                  {editLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Saving…
+                    </>
+                  ) : 'Save Changes'}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
