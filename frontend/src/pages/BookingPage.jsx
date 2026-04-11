@@ -1,6 +1,23 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+
+// ── Inject Google Fonts (Syne + DM Sans) once ──────────────────────
+function useGoogleFonts() {
+  useEffect(() => {
+    const id = 'uninest-google-fonts';
+    if (document.getElementById(id)) return;
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap';
+    document.head.appendChild(link);
+  }, []);
+}
+
+// ── Font shorthands (match Home.jsx exactly) ───────────────────────
+const FONT_DISPLAY = { fontFamily: "'Syne', sans-serif" };
+const FONT_BODY    = { fontFamily: "'DM Sans', sans-serif" };
 
 function getISODate(date) {
   return date.toISOString().slice(0, 10);
@@ -32,6 +49,7 @@ function StepBadge({ number, label, active, done }) {
       <div
         className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors
           ${done ? 'bg-[#22c55e] text-white' : active ? 'bg-[#3b4f86] text-white' : 'bg-[#232E45] text-gray-400'}`}
+        style={FONT_BODY}
       >
         {done ? (
           <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -39,7 +57,10 @@ function StepBadge({ number, label, active, done }) {
           </svg>
         ) : number}
       </div>
-      <span className={`text-xs font-medium hidden sm:block ${active ? 'text-white' : done ? 'text-[#22c55e]' : 'text-gray-500'}`}>
+      <span
+        className={`text-xs font-medium hidden sm:block ${active ? 'text-white' : done ? 'text-[#22c55e]' : 'text-gray-500'}`}
+        style={FONT_BODY}
+      >
         {label}
       </span>
     </div>
@@ -57,8 +78,8 @@ function SectionCard({ icon, title, subtitle, children, accent }) {
           </div>
         )}
         <div>
-          <h2 className="text-sm font-semibold text-white leading-tight">{title}</h2>
-          {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+          <h2 className="text-sm font-semibold text-white leading-tight" style={FONT_DISPLAY}>{title}</h2>
+          {subtitle && <p className="text-xs text-gray-400 mt-0.5" style={FONT_BODY}>{subtitle}</p>}
         </div>
       </div>
       {children}
@@ -70,13 +91,13 @@ function SectionCard({ icon, title, subtitle, children, accent }) {
 function Field({ label, error, hint, required, children }) {
   return (
     <div className="space-y-1">
-      <label className="block text-xs font-medium text-gray-300">
+      <label className="block text-xs font-medium text-gray-300" style={FONT_BODY}>
         {label}
         {required && <span className="ml-1 text-red-400">*</span>}
       </label>
       {children}
-      {hint && !error && <p className="text-[11px] text-gray-500">{hint}</p>}
-      {error && <p className="text-[11px] text-red-400 flex items-center gap-1">
+      {hint && !error && <p className="text-[11px] text-gray-500" style={FONT_BODY}>{hint}</p>}
+      {error && <p className="text-[11px] text-red-400 flex items-center gap-1" style={FONT_BODY}>
         <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
         </svg>
@@ -94,6 +115,8 @@ const dateInputCls =
 
 // ── Main component ──────────────────────────────────────────────────
 export default function BookingPage() {
+  useGoogleFonts();
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -262,20 +285,19 @@ export default function BookingPage() {
   const formattedMoveIn = moveInDate ? parseISODate(moveInDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
   const formattedMoveOut = moveOutDate ? parseISODate(moveOutDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
-  // Step completion
   const step1Done = fullName.trim() && email.trim() && phone.trim();
   const step2Done = moveInDate && moveOutDate;
 
   return (
-    <div className="min-h-screen bg-[#060F1E] px-4 py-8 md:py-12 flex items-start justify-center text-gray-100">
+    <div className="min-h-screen bg-[#060F1E] px-4 py-8 md:py-12 flex items-start justify-center text-gray-100" style={FONT_BODY}>
       <div className="w-full max-w-6xl space-y-6">
 
         {/* ── Page header ── */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <p className="text-xs font-medium uppercase tracking-widest text-[#6b84c9] mb-1">AnnexRent</p>
-            <h1 className="text-2xl md:text-3xl font-semibold text-white">Complete Your Booking</h1>
-            <p className="text-sm text-gray-400 mt-1">Fill in the details below to send a booking request.</p>
+            <p className="text-xs font-medium uppercase tracking-widest text-[#6b84c9] mb-1" style={FONT_BODY}>AnnexRent</p>
+            <h1 className="text-2xl md:text-3xl font-semibold text-white" style={FONT_DISPLAY}>Complete Your Booking</h1>
+            <p className="text-sm text-gray-400 mt-1" style={FONT_BODY}>Fill in the details below to send a booking request.</p>
           </div>
           {/* Progress steps */}
           <div className="flex items-center gap-3 flex-shrink-0">
@@ -312,6 +334,7 @@ export default function BookingPage() {
                     onChange={handleFullNameChange}
                     className={inputCls}
                     placeholder="e.g. Kasun Perera"
+                    style={FONT_BODY}
                   />
                 </Field>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -322,6 +345,7 @@ export default function BookingPage() {
                       onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: undefined })); }}
                       className={inputCls}
                       placeholder="you@example.com"
+                      style={FONT_BODY}
                     />
                   </Field>
                   <Field label="Phone Number" required error={errors.phone} hint="10-digit Sri Lankan mobile number">
@@ -333,6 +357,7 @@ export default function BookingPage() {
                       maxLength={10}
                       className={inputCls}
                       placeholder="07XXXXXXXX"
+                      style={FONT_BODY}
                     />
                   </Field>
                 </div>
@@ -362,6 +387,7 @@ export default function BookingPage() {
                         setErrors((p) => ({ ...p, moveInDate: undefined }));
                       }}
                       className={dateInputCls}
+                      style={FONT_BODY}
                     />
                   </Field>
                   <Field label="Move-out Date" required error={errors.moveOutDate}>
@@ -371,6 +397,7 @@ export default function BookingPage() {
                       min={moveInDate || todayISO}
                       onChange={(e) => { setMoveOutDate(e.target.value); setErrors((p) => ({ ...p, moveOutDate: undefined })); }}
                       className={dateInputCls}
+                      style={FONT_BODY}
                     />
                   </Field>
                 </div>
@@ -378,14 +405,14 @@ export default function BookingPage() {
                 {/* Duration pill */}
                 {durationNights > 0 && (
                   <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#1a2540] border border-[#3b4f86] px-3 py-1 text-xs font-medium text-[#a5b8e8]">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#1a2540] border border-[#3b4f86] px-3 py-1 text-xs font-medium text-[#a5b8e8]" style={FONT_BODY}>
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
                         <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6z" />
                         <path d="M10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
                       </svg>
                       {durationNights} {durationNights === 1 ? 'night' : 'nights'}
                     </span>
-                    <span className="text-[11px] text-gray-500">
+                    <span className="text-[11px] text-gray-500" style={FONT_BODY}>
                       {moveInDate && moveOutDate
                         ? `${parseISODate(moveInDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} → ${parseISODate(moveOutDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
                         : ''}
@@ -409,6 +436,7 @@ export default function BookingPage() {
                           ${stayPreset === opt.value
                             ? 'border-[#3b4f86] bg-[#3b4f86] text-white'
                             : 'border-[#232E45] bg-transparent text-gray-400 hover:border-[#3b4f86] hover:text-gray-200'}`}
+                        style={FONT_BODY}
                       >
                         {opt.label}
                       </button>
@@ -424,11 +452,12 @@ export default function BookingPage() {
                     onChange={(e) => setNotes(e.target.value)}
                     className={`${inputCls} resize-none`}
                     placeholder="e.g. I'll be arriving late in the evening on the first day."
+                    style={FONT_BODY}
                   />
                 </Field>
 
                 {errors.dateRange && (
-                  <div className="flex items-start gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-400">
+                  <div className="flex items-start gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-400" style={FONT_BODY}>
                     <svg xmlns="http://www.w3.org/2000/svg" className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
@@ -454,14 +483,16 @@ export default function BookingPage() {
                   type="button"
                   onClick={handlePrevMonth}
                   className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#232E45] bg-[#060F1E] text-gray-300 hover:bg-[#232E45] hover:text-white transition-colors text-sm"
+                  style={FONT_BODY}
                 >
                   ‹
                 </button>
-                <span className="text-sm font-semibold text-white">{monthFormatter.format(currentMonth)}</span>
+                <span className="text-sm font-semibold text-white" style={FONT_DISPLAY}>{monthFormatter.format(currentMonth)}</span>
                 <button
                   type="button"
                   onClick={handleNextMonth}
                   className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#232E45] bg-[#060F1E] text-gray-300 hover:bg-[#232E45] hover:text-white transition-colors text-sm"
+                  style={FONT_BODY}
                 >
                   ›
                 </button>
@@ -471,7 +502,7 @@ export default function BookingPage() {
               <div className="rounded-xl border border-[#e5e7eb] bg-white p-4">
                 <div className="grid grid-cols-7 text-center mb-2">
                   {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
-                    <div key={d} className="text-[11px] font-semibold text-gray-400 py-1">{d}</div>
+                    <div key={d} className="text-[11px] font-semibold text-gray-400 py-1" style={FONT_BODY}>{d}</div>
                   ))}
                 </div>
                 <div className="space-y-0.5">
@@ -490,22 +521,17 @@ export default function BookingPage() {
 
                         let cls =
                           'relative flex h-9 w-full items-center justify-center text-xs font-medium transition-all select-none';
-
-                        if (inRange) {
-                          cls += ' bg-[#dcfce7] text-[#166534]';
-                        }
+                        if (inRange) cls += ' bg-[#dcfce7] text-[#166534]';
 
                         let innerCls =
                           'relative z-10 flex h-8 w-8 items-center justify-center rounded-full';
-
                         if (isDisabled) {
                           innerCls += ' text-gray-300 cursor-not-allowed';
                           if (blocked) innerCls += ' line-through text-red-300';
                         } else if (isStart || isEnd) {
                           innerCls += ' bg-[#22c55e] text-white shadow-sm cursor-pointer font-semibold';
                         } else {
-                          innerCls +=
-                            ' cursor-pointer text-gray-700 hover:bg-[#d1fae5] hover:text-[#166534]';
+                          innerCls += ' cursor-pointer text-gray-700 hover:bg-[#d1fae5] hover:text-[#166534]';
                           if (isToday) innerCls += ' ring-1 ring-[#3b4f86] font-semibold text-[#3b4f86]';
                         }
 
@@ -519,6 +545,7 @@ export default function BookingPage() {
                               onClick={() => handleDayClick(date)}
                               disabled={isDisabled}
                               className={innerCls}
+                              style={FONT_BODY}
                             >
                               {date.getDate()}
                               {blocked && (
@@ -542,6 +569,7 @@ export default function BookingPage() {
                     type="button"
                     onClick={handleClearDates}
                     className="ml-auto text-[11px] font-medium text-gray-400 hover:text-gray-700 underline underline-offset-2"
+                    style={FONT_BODY}
                   >
                     Clear selection
                   </button>
@@ -557,6 +585,7 @@ export default function BookingPage() {
                     ? 'bg-green-500/10 border-green-500/30 text-green-300'
                     : 'bg-red-500/10 border-red-500/30 text-red-300'
                 }`}
+                style={FONT_BODY}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="mt-0.5 h-4 w-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                   {requestSubmitted
@@ -574,6 +603,7 @@ export default function BookingPage() {
                 type="button"
                 onClick={handleCancel}
                 className="inline-flex items-center justify-center rounded-xl border border-[#232E45] bg-transparent px-5 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:bg-[#232E45]/40 hover:text-white"
+                style={FONT_BODY}
               >
                 Cancel
               </button>
@@ -582,6 +612,7 @@ export default function BookingPage() {
                 onClick={handleConfirm}
                 disabled={submitting}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#3b4f86] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#4c62a3] disabled:opacity-50 disabled:cursor-not-allowed"
+                style={FONT_DISPLAY}
               >
                 {submitting ? (
                   <>
@@ -615,8 +646,8 @@ export default function BookingPage() {
                 />
               </div>
               <div className="p-5 space-y-1">
-                <h2 className="text-sm font-semibold text-white leading-tight">{room.title}</h2>
-                <p className="flex items-center gap-1.5 text-xs text-gray-400">
+                <h2 className="text-sm font-semibold text-white leading-tight" style={FONT_DISPLAY}>{room.title}</h2>
+                <p className="flex items-center gap-1.5 text-xs text-gray-400" style={FONT_BODY}>
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-[#6b84c9]" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                   </svg>
@@ -627,7 +658,7 @@ export default function BookingPage() {
 
             {/* Booking summary */}
             <div className="rounded-2xl border border-[#232E45] bg-[#0B1628] p-5 space-y-4">
-              <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-400">Booking Summary</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-400" style={FONT_BODY}>Booking Summary</h3>
 
               <div className="space-y-2.5">
                 <SummaryRow label="Move-in" value={formattedMoveIn} highlight={!!moveInDate} />
@@ -644,13 +675,13 @@ export default function BookingPage() {
 
               {/* Checklist */}
               <div className="space-y-2 border-t border-[#232E45] pt-4">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-500 mb-2">Requirements</p>
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-500 mb-2" style={FONT_BODY}>Requirements</p>
                 <CheckItem done={!!step1Done} label="Student information" />
                 <CheckItem done={!!moveInDate} label="Move-in date selected" />
                 <CheckItem done={!!moveOutDate} label="Move-out date selected" />
               </div>
 
-              <p className="text-[11px] text-gray-500 leading-relaxed border-t border-[#232E45] pt-4">
+              <p className="text-[11px] text-gray-500 leading-relaxed border-t border-[#232E45] pt-4" style={FONT_BODY}>
                 This is a booking <span className="text-gray-300 font-medium">request</span>. The property owner will review and respond within 24–48 hours.
               </p>
             </div>
@@ -670,7 +701,7 @@ function LegendItem({ color, dotColor, label }) {
       ) : (
         <span className={`inline-block h-3 w-3 rounded-full border ${color}`} />
       )}
-      <span className="text-[11px] text-gray-500">{label}</span>
+      <span className="text-[11px] text-gray-500" style={{ fontFamily: "'DM Sans', sans-serif" }}>{label}</span>
     </div>
   );
 }
@@ -678,8 +709,8 @@ function LegendItem({ color, dotColor, label }) {
 function SummaryRow({ label, value, highlight, bold }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-xs text-gray-400">{label}</span>
-      <span className={`text-xs ${bold ? 'font-semibold' : 'font-medium'} ${highlight ? 'text-white' : 'text-gray-600'}`}>
+      <span className="text-xs text-gray-400" style={{ fontFamily: "'DM Sans', sans-serif" }}>{label}</span>
+      <span className={`text-xs ${bold ? 'font-semibold' : 'font-medium'} ${highlight ? 'text-white' : 'text-gray-600'}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>
         {value}
       </span>
     </div>
@@ -696,7 +727,7 @@ function CheckItem({ done, label }) {
           </svg>
         )}
       </div>
-      <span className={`text-xs ${done ? 'text-gray-300' : 'text-gray-500'}`}>{label}</span>
+      <span className={`text-xs ${done ? 'text-gray-300' : 'text-gray-500'}`} style={{ fontFamily: "'DM Sans', sans-serif" }}>{label}</span>
     </div>
   );
 }

@@ -7,301 +7,28 @@ import { useNavigate } from 'react-router-dom';
 const API_BASE = 'http://localhost:5000';
 const sliitLocation = { lat: 6.9147, lng: 79.9723 };
 
-const GLOBAL_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@700;800;900&display=swap');
-
-  @keyframes sa-fadeUp { from{opacity:0;transform:translateY(32px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes sa-fadeIn { from{opacity:0} to{opacity:1} }
-  @keyframes sa-slideLeft { from{opacity:0;transform:translateX(-24px)} to{opacity:1;transform:translateX(0)} }
-  @keyframes sa-spin { to{transform:rotate(360deg)} }
-  @keyframes sa-pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.85)} }
-  @keyframes sa-orb { 0%,100%{transform:translate(0,0) scale(1)} 40%{transform:translate(20px,-15px) scale(1.05)} 70%{transform:translate(-12px,10px) scale(0.97)} }
-  @keyframes sa-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
-  @keyframes sa-line-grow { from{transform:scaleX(0)} to{transform:scaleX(1)} }
-  @keyframes sa-badge-pop { 0%{transform:scale(0.8);opacity:0} 70%{transform:scale(1.05)} 100%{transform:scale(1);opacity:1} }
-
-  .sa-sidebar-header {
-    background: linear-gradient(180deg,#060f1e 0%,#071222 100%);
-    padding: 0.85rem 1rem 0.75rem;
-    border-bottom: 1px solid #111e35;
-    animation: sa-slideLeft 0.55s cubic-bezier(0.22,1,0.36,1) both;
-    position: relative; flex-shrink: 0;
-  }
-  .sa-sidebar-header::after {
-    content:''; position:absolute; bottom:0; left:0; right:0; height:1px;
-    background:linear-gradient(90deg,transparent,rgba(59,130,246,0.4),transparent);
-    transform-origin:left; animation:sa-line-grow 1.2s 0.3s cubic-bezier(0.22,1,0.36,1) both;
-  }
-  .sa-brand-dot { width:6px;height:6px;border-radius:50%;background:#3b82f6;animation:sa-pulse-dot 2s ease-in-out infinite; }
-  .sa-brand-tag { font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(59,130,246,0.75);font-weight:600; }
-  .sa-logo-text { font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:900;color:#fff;line-height:1;letter-spacing:-0.02em; }
-  .sa-logo-accent { color:#3b82f6; }
-  .sa-tagline { font-size:0.68rem;color:rgba(255,255,255,0.28);margin-top:0.2rem;line-height:1.4; }
-
-  .sa-filters { animation:sa-slideLeft 0.6s 0.08s cubic-bezier(0.22,1,0.36,1) both; flex-shrink:0; }
-  .sa-card-list { animation:sa-fadeIn 0.5s 0.2s both; }
-  .sa-annex-card { transition:border-color 0.2s,background 0.2s,box-shadow 0.2s,transform 0.18s; }
-  .sa-annex-card:hover { transform:translateX(3px); }
-  .sa-card-img { transition:transform 0.4s cubic-bezier(0.22,1,0.36,1); }
-  .sa-annex-card:hover .sa-card-img { transform:scale(1.07); }
-  .sa-scroll-hint { animation:sa-float 2.5s ease-in-out infinite; }
-
-  .sa-landing { background:#060f1e; overflow:hidden; position:relative; }
-  .sa-landing-orb-1 { position:absolute;top:-80px;right:-60px;width:420px;height:420px;background:radial-gradient(circle,rgba(59,130,246,0.12) 0%,transparent 70%);pointer-events:none;animation:sa-orb 16s ease-in-out infinite; }
-  .sa-landing-orb-2 { position:absolute;bottom:200px;left:-80px;width:500px;height:500px;background:radial-gradient(circle,rgba(59,130,246,0.07) 0%,transparent 70%);pointer-events:none;animation:sa-orb 20s ease-in-out infinite reverse; }
-
-  .sa-reveal { opacity:0;transform:translateY(20px);transition:opacity 0.6s cubic-bezier(0.22,1,0.36,1),transform 0.6s cubic-bezier(0.22,1,0.36,1); }
-  .sa-reveal.visible { opacity:1;transform:translateY(0); }
-
-  .sa-section-eyebrow { font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(59,130,246,0.75);font-weight:700;display:flex;align-items:center;gap:6px;margin-bottom:0.5rem; }
-  .sa-section-eyebrow::before { content:'';display:inline-block;width:16px;height:1px;background:rgba(59,130,246,0.5); }
-
-  .sa-lcard { background:rgba(255,255,255,0.025);border:1px solid #111e35;border-radius:11px;padding:0.85rem 0.95rem;display:flex;align-items:center;gap:11px;transition:border-color 0.2s,background 0.2s,transform 0.2s; }
-  .sa-lcard:hover { border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.04);transform:translateY(-2px); }
-  .sa-lcard-icon { width:30px;height:30px;border-radius:7px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.2);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;transition:background 0.2s; }
-  .sa-lcard:hover .sa-lcard-icon { background:rgba(59,130,246,0.22); }
-  .sa-lcard-title { font-family:'Syne',sans-serif;font-size:0.78rem;font-weight:700;color:#e2e8f0; }
-  .sa-lcard-sub { font-size:0.66rem;color:rgba(255,255,255,0.28);margin-top:1px; }
-
-  .sa-mini-stat { background:rgba(255,255,255,0.03);border:1px solid rgba(59,130,246,0.12);border-radius:10px;padding:0.75rem 1rem;transition:border-color 0.2s,background 0.2s; }
-  .sa-mini-stat:hover { border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.05); }
-  .sa-mini-num { font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:900;color:#fff;line-height:1; }
-  .sa-mini-label { font-size:0.64rem;color:rgba(255,255,255,0.3);margin-top:3px;letter-spacing:0.04em; }
-
-  .sa-team-card { background:rgba(255,255,255,0.02);border:1px solid #111e35;border-radius:10px;padding:0.85rem 0.75rem;text-align:center;transition:border-color 0.2s,background 0.2s,transform 0.2s; }
-  .sa-team-card:hover { border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.04);transform:translateY(-2px); }
-  .sa-avatar { width:40px;height:40px;border-radius:50%;border:2px solid rgba(59,130,246,0.3);display:flex;align-items:center;justify-content:center;margin:0 auto 0.5rem;font-family:'Syne',sans-serif;font-size:0.8rem;font-weight:900;color:#60a5fa;background:rgba(59,130,246,0.08);transition:border-color 0.2s; }
-  .sa-team-card:hover .sa-avatar { border-color:rgba(59,130,246,0.6); }
-  .sa-team-name { font-size:0.74rem;font-weight:600;color:#e2e8f0;margin-bottom:0.1rem; }
-  .sa-team-role { font-size:0.61rem;color:rgba(59,130,246,0.6);font-weight:500; }
-
-  .sa-tech-pill { background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:5px;padding:0.2rem 0.55rem;font-size:0.65rem;color:rgba(59,130,246,0.8);font-weight:600;display:inline-block; }
-
-  .sa-divider { border:none;height:1px;background:linear-gradient(90deg,transparent,rgba(59,130,246,0.2),transparent);margin:0; }
-
-  .sa-cta-wrap { background:linear-gradient(135deg,rgba(59,130,246,0.08) 0%,rgba(37,99,235,0.12) 100%);border:1px solid rgba(59,130,246,0.2);border-radius:16px;padding:2rem;text-align:center;position:relative;overflow:hidden; }
-  .sa-cta-wrap::before { content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(59,130,246,0.1) 0%,transparent 70%);pointer-events:none; }
-  .sa-cta-title { font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:900;color:#fff;letter-spacing:-0.02em;position:relative;margin-bottom:0.4rem; }
-
-  .sa-btn-primary { background:#2563eb;color:#fff;border:none;border-radius:9px;padding:0.6rem 1.4rem;font-size:0.8rem;font-weight:700;cursor:pointer;transition:background 0.18s,box-shadow 0.18s,transform 0.15s;box-shadow:0 0 16px rgba(37,99,235,0.3);display:inline-flex;align-items:center;gap:6px; }
-  .sa-btn-primary:hover { background:#3b82f6;box-shadow:0 0 24px rgba(59,130,246,0.5);transform:translateY(-2px); }
-  .sa-btn-outline { background:transparent;color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.15);border-radius:9px;padding:0.6rem 1.4rem;font-size:0.8rem;font-weight:600;cursor:pointer;transition:all 0.18s;display:inline-flex;align-items:center;gap:6px; }
-  .sa-btn-outline:hover { border-color:rgba(59,130,246,0.5);color:#93c5fd;background:rgba(59,130,246,0.07);transform:translateY(-2px); }
-
-  .sa-scrollbar::-webkit-scrollbar { width:3px; }
-  .sa-scrollbar::-webkit-scrollbar-track { background:transparent; }
-  .sa-scrollbar::-webkit-scrollbar-thumb { background:#172240;border-radius:4px; }
-  .sa-scrollbar::-webkit-scrollbar-thumb:hover { background:#2a4070; }
-
-  .sa-map-scroll-btn { position:absolute;bottom:6rem;right:1.5rem;background:rgba(6,15,30,0.88);border:1px solid rgba(59,130,246,0.35);border-radius:12px;padding:0.55rem 1rem;color:rgba(255,255,255,0.65);font-size:0.7rem;font-weight:600;cursor:pointer;backdrop-filter:blur(10px);display:flex;align-items:center;gap:6px;transition:all 0.2s;animation:sa-float 3s ease-in-out infinite;z-index:10; }
-  .sa-map-scroll-btn:hover { background:rgba(59,130,246,0.18);border-color:rgba(59,130,246,0.6);color:#93c5fd; }
-  .sa-map-header { position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(6,15,30,0.88);backdrop-filter:blur(14px);border:1px solid rgba(59,130,246,0.2);border-radius:40px;padding:0.4rem 1.1rem;display:flex;align-items:center;gap:12px;z-index:10;animation:sa-fadeUp 0.7s 0.3s cubic-bezier(0.22,1,0.36,1) both; }
-  .sa-map-header-dot { width:6px;height:6px;border-radius:50%;background:#22c55e;animation:sa-pulse-dot 2.5s ease-in-out infinite; }
-  .sa-map-header-text { font-size:11px;font-weight:600;color:rgba(255,255,255,0.5);letter-spacing:0.04em; }
-  .sa-map-header-count { font-size:11px;font-weight:700;color:#60a5fa;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);border-radius:20px;padding:2px 10px; }
-
-  .sa-commute-badge { display:inline-flex;align-items:center;gap:5px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:7px;padding:0.25rem 0.6rem;font-size:11px;font-weight:700;color:#4ade80;animation:sa-badge-pop 0.3s cubic-bezier(0.22,1,0.36,1) both; }
-  .sa-rank-badge { position:absolute;top:-1px;right:10px;font-family:'Syne',sans-serif;font-size:9px;font-weight:900;padding:3px 8px;border-radius:0 0 8px 8px;letter-spacing:0.06em;text-transform:uppercase; }
-
-  /* Compact single-row stats strip */
-  .sa-stats-strip { display:flex;flex-shrink:0;border-bottom:1px solid #0e1a2e; }
-  .sa-stat-cell { flex:1;padding:0.4rem 0.4rem;text-align:center;border-right:1px solid #0e1a2e; }
-  .sa-stat-cell:last-child { border-right:none; }
-  .sa-stat-cell-val { font-family:'Syne',sans-serif;font-size:0.82rem;font-weight:900;color:#60a5fa;line-height:1; }
-  .sa-stat-cell-label { font-size:7.5px;color:#2a4070;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;margin-top:2px; }
-
-  .sa-price-trend { font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px;display:inline-block; }
-  .sa-price-trend.low { background:rgba(34,197,94,0.1);color:#4ade80;border:1px solid rgba(34,197,94,0.2); }
-  .sa-price-trend.mid { background:rgba(250,204,21,0.1);color:#fbbf24;border:1px solid rgba(250,204,21,0.2); }
-  .sa-price-trend.high { background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2); }
-
-  .sa-quick-action { display:flex;align-items:center;gap:7px;background:#0b1628;border:1px solid #172240;border-radius:8px;padding:0.4rem 0.75rem;font-size:11px;font-weight:600;color:#4b6d9e;cursor:pointer;transition:all 0.18s;flex:1;justify-content:center; }
-  .sa-quick-action:hover { border-color:rgba(59,130,246,0.4);color:#93c5fd;background:rgba(59,130,246,0.06); }
-
-  /* Landing */
-  .sa-land-wrap { max-width:960px;margin:0 auto;padding:0 2.5rem; }
-  .sa-land-sec { padding:2.5rem 0;border-top:1px solid #0e1a2e; }
-  .sa-land-sec-title { font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:900;color:#fff;margin:0.3rem 0 1.1rem;letter-spacing:-0.01em; }
-  .sa-land-sec-title .accent { background:linear-gradient(135deg,#3b82f6 0%,#60a5fa 50%,#93c5fd 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text; }
-`;
-
-/* ── Data ── */
-const FEATURES = [
-  { icon:'🗺️', title:'Live Map Search',    sub:'Mapbox-powered, centred on SLIIT' },
-  { icon:'📏', title:'Distance Filtering', sub:'Custom radius from campus' },
-  { icon:'💰', title:'Budget Filtering',   sub:'Min / max price range control' },
-  { icon:'🚗', title:'Commute Estimator',  sub:'Drive time calculated on hover' },
-  { icon:'✅', title:'Verified Listings',  sub:'Manually reviewed before publishing' },
-  { icon:'📱', title:'Instant Booking',    sub:'Digital booking, no paperwork' },
-];
-const STEPS = [
-  { num:'01', title:'Set Filters',    sub:'Distance · Budget · Gender' },
-  { num:'02', title:'Browse Map',     sub:'Click any pin for quick preview' },
-  { num:'03', title:'View Details',   sub:'Photos · Amenities · Owner contact' },
-  { num:'04', title:'Book & Confirm', sub:'Fully digital, same-day confirmation' },
-];
-const TEAM = [
-  { initials:'AK', name:'Ashan Kavinda',      role:'Full Stack Lead' },
-  { initials:'NP', name:'Nethmi Perera',       role:'UI / UX Design' },
-  { initials:'RM', name:'Ravindu Madushanka',  role:'Backend & API' },
-  { initials:'ST', name:'Sahan Thilakarathne', role:'Maps & Geo' },
-  { initials:'DW', name:'Dinusha Wijesiri',    role:'QA & Testing' },
-];
-const TECH  = ['React 18','Node.js','MongoDB','Mapbox GL','Express','Tailwind CSS','Axios','JWT Auth'];
-const STATS = [
-  { num:'120+',   label:'Verified Annexes' },
-  { num:'< 2 km', label:'Avg Distance' },
-  { num:'500+',   label:'Students Housed' },
-  { num:'4.8 ★',  label:'Avg Rating' },
-];
-
-/* ── Scroll-reveal ── */
-function useReveal() {
-  const ref = useRef(null);
-  useEffect(() => {
-    const el = ref.current; if (!el) return;
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { el.classList.add('visible'); obs.disconnect(); } }, { threshold:0.1 });
-    obs.observe(el); return () => obs.disconnect();
-  }, []);
-  return ref;
-}
-
 function getPriceTier(p) {
   if (!p) return null;
-  if (p < 15000) return { label:'Budget', cls:'low' };
-  if (p < 30000) return { label:'Mid',    cls:'mid' };
-  return               { label:'Premium', cls:'high' };
+  if (p < 15000) return { label: 'Budget',  color: 'text-[#4ade80]', bg: 'bg-green-500/10',  border: 'border-green-500/20' };
+  if (p < 30000) return { label: 'Mid',     color: 'text-[#fbbf24]', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20' };
+  return               { label: 'Premium', color: 'text-[#f87171]', bg: 'bg-red-500/10',    border: 'border-red-500/20' };
 }
 
-const Eyebrow = ({ children }) => <p className="sa-section-eyebrow">{children}</p>;
+const inputCls = 'w-full rounded-xl border border-[#232E45] bg-[#060F1E] px-3 py-2 text-sm text-gray-100 placeholder-gray-600 transition-colors focus:border-[#3b4f86] focus:outline-none focus:ring-1 focus:ring-[#3b4f86] hover:border-[#2e3c5e]';
 
-/* ── Landing sections ── */
-function AboutSection({ onBackToMap, onFeatures }) {
-  const ref = useReveal();
+function Field({ label, children }) {
   return (
-    <div ref={ref} className="sa-reveal sa-land-sec" style={{ borderTop:'none', paddingTop:'3rem' }}>
-      <div className="sa-land-wrap">
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'0.75rem', marginBottom:'1.25rem' }}>
-          <div>
-            <Eyebrow>About UNI NEST</Eyebrow>
-            <h2 className="sa-land-sec-title" style={{ fontSize:'1.5rem', marginBottom:0 }}>
-              Smartest housing search for <span className="accent">SLIIT students.</span>
-            </h2>
-          </div>
-          <div style={{ display:'flex', gap:'0.6rem' }}>
-            <button className="sa-btn-primary" onClick={onBackToMap}>↑ Back to Map</button>
-            <button className="sa-btn-outline" onClick={onFeatures}>Features →</button>
-          </div>
-        </div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'0.6rem' }}>
-          {STATS.map((s,i) => (
-            <div key={i} className="sa-mini-stat">
-              <div className="sa-mini-num">{s.num}</div>
-              <div className="sa-mini-label">{s.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+    <div className="space-y-1">
+      <label className="block text-[10px] font-semibold uppercase tracking-widest text-gray-500">{label}</label>
+      {children}
     </div>
   );
 }
 
-function FeaturesSection() {
-  const ref = useReveal();
-  return (
-    <div id="sa-features" ref={ref} className="sa-reveal sa-land-sec">
-      <div className="sa-land-wrap">
-        <Eyebrow>Platform Features</Eyebrow>
-        <h3 className="sa-land-sec-title">What UNI NEST <span className="accent">offers.</span></h3>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'0.55rem' }}>
-          {FEATURES.map((f,i) => (
-            <div key={i} className="sa-lcard">
-              <div className="sa-lcard-icon">{f.icon}</div>
-              <div><div className="sa-lcard-title">{f.title}</div><div className="sa-lcard-sub">{f.sub}</div></div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function HowItWorksSection() {
-  const ref = useReveal();
-  return (
-    <div ref={ref} className="sa-reveal sa-land-sec">
-      <div className="sa-land-wrap">
-        <Eyebrow>How It Works</Eyebrow>
-        <h3 className="sa-land-sec-title">Search to <span className="accent">move-in, in minutes.</span></h3>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'0.55rem' }}>
-          {STEPS.map((step,i) => (
-            <div key={i} className="sa-lcard" style={{ flexDirection:'column', alignItems:'flex-start', gap:8 }}>
-              <div style={{ width:28, height:28, borderRadius:7, background:'rgba(59,130,246,0.12)', border:'1px solid rgba(59,130,246,0.25)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.62rem', fontWeight:900, color:'#3b82f6', fontFamily:"'Syne',sans-serif" }}>{step.num}</div>
-              <div><div className="sa-lcard-title">{step.title}</div><div className="sa-lcard-sub">{step.sub}</div></div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TechTeamSection() {
-  const ref = useReveal();
-  return (
-    <div ref={ref} className="sa-reveal sa-land-sec">
-      <div className="sa-land-wrap">
-        <div style={{ marginBottom:'2rem' }}>
-          <Eyebrow>Built With</Eyebrow>
-          <h3 className="sa-land-sec-title" style={{ marginBottom:'0.65rem' }}>Modern stack. <span className="accent">Production-grade.</span></h3>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:'0.4rem' }}>{TECH.map((t,i) => <span key={i} className="sa-tech-pill">{t}</span>)}</div>
-        </div>
-        <div>
-          <Eyebrow>The Team</Eyebrow>
-          <h3 className="sa-land-sec-title" style={{ marginBottom:'0.65rem' }}>Made by <span className="accent">SLIIT students.</span></h3>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:'0.55rem' }}>
-            {TEAM.map((m,i) => (
-              <div key={i} className="sa-team-card">
-                <div className="sa-avatar">{m.initials}</div>
-                <div className="sa-team-name">{m.name}</div>
-                <div className="sa-team-role">{m.role}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CTASection({ onBackToMap }) {
-  const ref = useReveal();
-  return (
-    <div ref={ref} className="sa-reveal sa-land-sec">
-      <div className="sa-land-wrap">
-        <div className="sa-cta-wrap">
-          <Eyebrow>Ready to move in?</Eyebrow>
-          <h3 className="sa-cta-title">Find your perfect annex today.</h3>
-          <p style={{ fontSize:'0.73rem', color:'rgba(255,255,255,0.3)', marginBottom:'1.25rem', position:'relative' }}>
-            120+ verified listings · Set filters · Browse map · Book instantly
-          </p>
-          <div style={{ display:'flex', gap:'0.6rem', justifyContent:'center', flexWrap:'wrap', position:'relative' }}>
-            <button className="sa-btn-primary" onClick={onBackToMap}>Start Searching ↑</button>
-            <button className="sa-btn-outline">Contact Support</button>
-          </div>
-        </div>
-        <p style={{ textAlign:'center', fontSize:'0.6rem', color:'rgba(255,255,255,0.12)', marginTop:'1.25rem' }}>
-          © {new Date().getFullYear()} UNI NEST · SLIIT Software Engineering Project · All listings verified
-        </p>
-      </div>
-    </div>
-  );
-}
-
-/* ── Main ── */
+/* ════ Main ════ */
 function SearchAnnex() {
-  const navigate    = useNavigate();
-  const landingRef  = useRef(null);
+  const navigate   = useNavigate();
+  const wrapperRef = useRef(null);
 
   const [maxDistance, setMaxDistance] = useState(5000);
   const [minPrice,    setMinPrice]    = useState('');
@@ -316,13 +43,6 @@ function SearchAnnex() {
   const [sortBy,        setSortBy]        = useState('distance');
   const [showSortMenu,  setShowSortMenu]  = useState(false);
 
-  useEffect(() => {
-    const el = document.createElement('style');
-    el.textContent = GLOBAL_STYLES;
-    document.head.appendChild(el);
-    return () => document.head.removeChild(el);
-  }, []);
-
   const fetchAnnexes = async () => {
     setLoading(true);
     try {
@@ -336,157 +56,179 @@ function SearchAnnex() {
     finally { setLoading(false); }
   };
 
-  const calcKm = (sLat,sLng,eLat,eLng) => {
-    const toRad = v => (v*Math.PI)/180, R=6371;
-    const dLat=toRad(eLat-sLat), dLng=toRad(eLng-sLng);
-    const a=Math.sin(dLat/2)**2+Math.cos(toRad(sLat))*Math.cos(toRad(eLat))*Math.sin(dLng/2)**2;
-    return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  const calcKm = (sLat, sLng, eLat, eLng) => {
+    const toRad = v => (v * Math.PI) / 180, R = 6371;
+    const dLat = toRad(eLat - sLat), dLng = toRad(eLng - sLng);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(sLat)) * Math.cos(toRad(eLat)) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
   const getCommute = annex => {
-    if (!annex?.location?.coordinates||annex.location.coordinates.length<2) { setCommuteInfo(null); return; }
-    const [lng,lat] = annex.location.coordinates;
-    const d = calcKm(sliitLocation.lat,sliitLocation.lng,lat,lng);
-    setCommuteInfo({ distance_km:d.toFixed(2), duration_mins:Math.max(1,Math.round((d/25)*60)), mode:'estimated' });
+    if (!annex?.location?.coordinates || annex.location.coordinates.length < 2) { setCommuteInfo(null); return; }
+    const [lng, lat] = annex.location.coordinates;
+    const d = calcKm(sliitLocation.lat, sliitLocation.lng, lat, lng);
+    setCommuteInfo({ distance_km: d.toFixed(2), duration_mins: Math.max(1, Math.round((d / 25) * 60)), mode: 'estimated' });
   };
 
   useEffect(() => { fetchAnnexes(); }, []);
 
-  const goToDetails     = annex => navigate(`/annex/${annex._id}`, { state:{ annex } });
-  const scrollToLanding = ()    => landingRef.current?.scrollIntoView({ behavior:'smooth' });
+  const goToDetails = annex => navigate(`/annex/${annex._id}`, { state: { annex } });
 
   const genderBadge = g => {
-    if (!g)           return { label:'Any',    bg:'bg-[#0f1e38]',   text:'text-gray-400', border:'border-[#1f3058]' };
-    if (g==='Male')   return { label:'Male',   bg:'bg-blue-900/30', text:'text-blue-300', border:'border-blue-700/40' };
-    return                   { label:'Female', bg:'bg-pink-900/30', text:'text-pink-300', border:'border-pink-700/40' };
+    if (!g)             return { label: 'Any',    cls: 'bg-[#232E45] text-gray-400 border-[#2e3c5e]' };
+    if (g === 'Male')   return { label: 'Male',   cls: 'bg-blue-900/30 text-blue-300 border-blue-700/40' };
+    return                     { label: 'Female', cls: 'bg-pink-900/30 text-pink-300 border-pink-700/40' };
   };
 
-  const sortedAnnexes = [...annexes].sort((a,b) => sortBy==='price'?(a.price||0)-(b.price||0):(a.distance||0)-(b.distance||0));
-  const avgPrice = annexes.length ? Math.round(annexes.reduce((s,a)=>s+(a.price||0),0)/annexes.length) : 0;
+  const sortedAnnexes = [...annexes].sort((a, b) =>
+    sortBy === 'price' ? (a.price || 0) - (b.price || 0) : (a.distance || 0) - (b.distance || 0)
+  );
+  const avgPrice = annexes.length ? Math.round(annexes.reduce((s, a) => s + (a.price || 0), 0) / annexes.length) : 0;
 
   return (
-    <div className="sa-scrollbar" style={{ fontFamily:"'DM Sans',sans-serif", background:'#060f1e', overflowY:'auto', height:'100vh' }}>
+    <div
+      ref={wrapperRef}
+      style={{ height: '100vh', overflowY: 'auto', overflowX: 'hidden', background: '#060F1E', fontFamily: "'DM Sans', sans-serif" }}
+      className="text-gray-100"
+    >
+      {/* ── Google Fonts (same as Home.jsx) ── */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+        .sa-font-display { font-family: 'Syne', sans-serif; }
+        .annexrent-popup .mapboxgl-popup-content { font-family: 'DM Sans', sans-serif; background:#0B1628; border:1px solid #232E45; border-radius:16px; padding:0; box-shadow:0 20px 60px rgba(0,0,0,0.7); overflow:hidden; width:230px; }
+        .annexrent-popup .mapboxgl-popup-tip     { border-top-color:#232E45; }
+        .annexrent-popup .mapboxgl-popup-close-button { color:#4b6d9e; font-size:18px; padding:6px 10px; top:2px; right:2px; }
+        .annexrent-popup .mapboxgl-popup-close-button:hover { color:#fff; background:transparent; }
+      `}</style>
 
-      {/* ── TOP SPLIT ── */}
-      <div style={{ display:'flex', height:'100vh', overflow:'hidden' }}>
+      {/* ══ SPLIT VIEW (100vh) ══ */}
+      <div style={{ height: '100vh', display: 'flex', flexShrink: 0, overflow: 'hidden' }}>
 
-        {/* ════ SIDEBAR ════ */}
-        <div className="sa-scrollbar"
-          style={{ width:360, flexShrink:0, display:'flex', flexDirection:'column', background:'#060f1e', borderRight:'1px solid #111e35', zIndex:10, overflow:'hidden' }}>
+        {/* ── SIDEBAR ── */}
+        <div style={{ width: 340, flexShrink: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRight: '1px solid #111e35', background: '#060F1E', zIndex: 10 }}>
 
           {/* Header */}
-          <div className="sa-sidebar-header">
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'0.45rem' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:7 }}>
-                <div className="sa-brand-dot" />
-                <span className="sa-brand-tag">UNI NEST · Live Search</span>
-              </div>
-              <div style={{ display:'flex', gap:4 }}>
-                {['Map','About'].map((lbl,i) => (
-                  <button key={lbl} onClick={i===1?scrollToLanding:undefined}
-                    style={{ background:i===0?'rgba(59,130,246,0.15)':'transparent', border:`1px solid ${i===0?'rgba(59,130,246,0.35)':'#172240'}`, borderRadius:5, padding:'2px 9px', fontSize:9, fontWeight:700, color:i===0?'#60a5fa':'#2a4070', cursor:'pointer', textTransform:'uppercase', letterSpacing:'0.06em' }}>
-                    {lbl}
-                  </button>
-                ))}
+          <div style={{ flexShrink: 0, borderBottom: '1px solid #111e35', padding: '1rem' }}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-[#22c55e] animate-pulse" />
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[#6b84c9]">UNI NEST · Live</span>
               </div>
             </div>
-            <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between' }}>
+            <div className="flex items-end justify-between">
               <div>
-                <div className="sa-logo-text">UNI <span className="sa-logo-accent">NEST</span></div>
-                <p className="sa-tagline">Student housing near SLIIT · distance, price &amp; gender filters.</p>
+                <p className="text-[10px] font-medium uppercase tracking-widest text-[#6b84c9] mb-0.5">AnnexRent</p>
+                <h1 className="sa-font-display text-lg font-bold text-white leading-tight">UNI NEST</h1>
+                <p className="text-[11px] text-gray-500 mt-0.5">Student housing near SLIIT</p>
               </div>
-              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', background:'rgba(34,197,94,0.06)', border:'1px solid rgba(34,197,94,0.18)', borderRadius:8, padding:'0.3rem 0.5rem', gap:2 }}>
-                <span style={{ fontSize:13 }}>✓</span>
-                <span style={{ fontSize:7, fontWeight:700, color:'rgba(34,197,94,0.7)', textTransform:'uppercase', letterSpacing:'0.08em' }}>Verified</span>
+              <div className="flex items-center gap-1.5 rounded-xl border border-green-500/20 bg-green-500/10 px-2.5 py-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-[#4ade80]" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                <span className="text-[9px] font-semibold text-[#4ade80] uppercase tracking-wider">Verified</span>
               </div>
             </div>
           </div>
 
-          {/* Compact stats strip */}
+          {/* Stats strip */}
           {annexes.length > 0 && (
-            <div className="sa-stats-strip">
-              <div className="sa-stat-cell"><div className="sa-stat-cell-val">{annexes.length}</div><div className="sa-stat-cell-label">Found</div></div>
-              <div className="sa-stat-cell"><div className="sa-stat-cell-val">Rs.{(avgPrice/1000).toFixed(0)}k</div><div className="sa-stat-cell-label">Avg/mo</div></div>
-              <div className="sa-stat-cell"><div className="sa-stat-cell-val">{(maxDistance/1000).toFixed(0)}km</div><div className="sa-stat-cell-label">Radius</div></div>
-              <div className="sa-stat-cell"><div className="sa-stat-cell-val">{annexes.filter(a=>a.distance&&a.distance/1000<2).length}</div><div className="sa-stat-cell-label">≤2km</div></div>
+            <div style={{ display: 'flex', flexShrink: 0, borderBottom: '1px solid #0e1a2e' }}>
+              {[
+                { val: annexes.length, label: 'Found' },
+                { val: `Rs.${(avgPrice / 1000).toFixed(0)}k`, label: 'Avg/mo' },
+                { val: `${(maxDistance / 1000).toFixed(0)}km`, label: 'Radius' },
+                { val: annexes.filter(a => a.distance && a.distance / 1000 < 2).length, label: '≤2km' },
+              ].map((s, i) => (
+                <div key={i} style={{ flex: 1, borderRight: i < 3 ? '1px solid #0e1a2e' : 'none', padding: '0.4rem', textAlign: 'center' }}>
+                  <div className="sa-font-display text-sm font-bold text-[#6b84c9]">{s.val}</div>
+                  <div className="text-[9px] uppercase tracking-wider text-gray-600 mt-0.5">{s.label}</div>
+                </div>
+              ))}
             </div>
           )}
 
           {/* Filters */}
-          <div className="sa-filters" style={{ padding:'0.9rem 1rem', borderBottom:'1px solid #111e35' }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'0.65rem' }}>
-              <h2 style={{ fontFamily:"'Syne',sans-serif", fontSize:'0.9rem', fontWeight:700, color:'#fff', margin:0 }}>Find an Annex</h2>
-              <span style={{ fontSize:9, color:'#4b6d9e', background:'#0b1628', border:'1px solid #172240', padding:'0.15rem 0.55rem', borderRadius:999 }}>📍 Near SLIIT</span>
+          <div style={{ flexShrink: 0, borderBottom: '1px solid #0e1a2e', padding: '0.85rem 1rem' }} className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="sa-font-display text-sm font-semibold text-white">Find an Annex</h2>
+              <span className="rounded-full border border-[#232E45] bg-[#0B1628] px-2 py-0.5 text-[9px] text-gray-500">📍 Near SLIIT</span>
             </div>
 
-            {/* Distance slider */}
-            <div style={{ marginBottom:'0.7rem' }}>
-              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
-                <label style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.1em', color:'#4b6d9e', fontWeight:600 }}>Max Distance</label>
-                <span style={{ fontSize:12, fontWeight:700, color:'#60a5fa' }}>{(maxDistance/1000).toFixed(0)} km</span>
+            <Field label="Max Distance">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] text-gray-500">Radius</span>
+                <span className="sa-font-display text-xs font-bold text-[#6b84c9]">{(maxDistance / 1000).toFixed(0)} km</span>
               </div>
-              <input type="range" min="1000" max="15000" step="1000" value={maxDistance} onChange={e=>setMaxDistance(Number(e.target.value))}
-                style={{ width:'100%', height:4, borderRadius:9999, appearance:'none', cursor:'pointer', accentColor:'#3b82f6', background:`linear-gradient(to right,#3b82f6 ${((maxDistance-1000)/14000)*100}%,#172240 0%)` }} />
-              <div style={{ display:'flex', justifyContent:'space-between', fontSize:9, color:'#2a4070', marginTop:3 }}><span>1 km</span><span>15 km</span></div>
-            </div>
+              <input type="range" min="1000" max="15000" step="1000" value={maxDistance}
+                onChange={e => setMaxDistance(Number(e.target.value))}
+                className="w-full h-1 rounded-full cursor-pointer"
+                style={{ accentColor: '#3b4f86', background: `linear-gradient(to right,#3b4f86 ${((maxDistance - 1000) / 14000) * 100}%,#232E45 0%)` }}
+              />
+              <div className="flex justify-between text-[9px] text-gray-600 mt-1"><span>1 km</span><span>15 km</span></div>
+            </Field>
 
-            {/* Price */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:'0.7rem' }}>
-              {[['Min Price',minPrice,setMinPrice,'0'],['Max Price',maxPrice,setMaxPrice,'50000']].map(([lbl,val,setter,ph])=>(
-                <div key={lbl}>
-                  <label style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.1em', color:'#4b6d9e', fontWeight:600, display:'block', marginBottom:4 }}>{lbl}</label>
-                  <div style={{ position:'relative' }}>
-                    <span style={{ position:'absolute', left:9, top:'50%', transform:'translateY(-50%)', color:'#4b6d9e', fontSize:10 }}>Rs.</span>
-                    <input type="number" value={val} onChange={e=>setter(e.target.value)} placeholder={ph}
-                      style={{ width:'100%', boxSizing:'border-box', paddingLeft:29, paddingRight:7, paddingTop:7, paddingBottom:7, background:'#0b1628', border:'1px solid #172240', borderRadius:7, fontSize:12, color:'#e2e8f0', outline:'none' }} />
+            <div className="grid grid-cols-2 gap-2">
+              {[['Min Price', minPrice, setMinPrice, '0'], ['Max Price', maxPrice, setMaxPrice, '50000']].map(([lbl, val, setter, ph]) => (
+                <Field key={lbl} label={lbl}>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-600 pointer-events-none">Rs.</span>
+                    <input type="number" value={val} onChange={e => setter(e.target.value)} placeholder={ph}
+                      className={`${inputCls} pl-8 text-xs py-1.5`} />
                   </div>
-                </div>
+                </Field>
               ))}
             </div>
 
-            {/* Gender */}
-            <div style={{ marginBottom:'0.7rem' }}>
-              <label style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.1em', color:'#4b6d9e', fontWeight:600, display:'block', marginBottom:4 }}>Preferred Gender</label>
-              <div style={{ display:'flex', gap:5 }}>
-                {[['','Any'],['Male','Male'],['Female','Female']].map(([val,lbl])=>(
-                  <button key={val} onClick={()=>setGender(val)}
-                    style={{ flex:1, padding:'0.38rem', borderRadius:7, fontSize:11, fontWeight:600, cursor:'pointer', background:gender===val?'#2563eb':'#0b1628', border:`1px solid ${gender===val?'#3b82f6':'#172240'}`, color:gender===val?'#fff':'#6b7280', transition:'all 0.18s' }}>
+            <Field label="Preferred Gender">
+              <div className="flex gap-2">
+                {[['', 'Any'], ['Male', 'Male'], ['Female', 'Female']].map(([val, lbl]) => (
+                  <button key={val} onClick={() => setGender(val)}
+                    className={`flex-1 rounded-xl border py-1.5 text-xs font-semibold transition-colors
+                      ${gender === val
+                        ? 'border-[#3b4f86] bg-[#3b4f86] text-white'
+                        : 'border-[#232E45] bg-transparent text-gray-500 hover:border-[#3b4f86] hover:text-gray-300'}`}>
                     {lbl}
                   </button>
                 ))}
               </div>
-            </div>
+            </Field>
 
-            {/* Apply */}
-            <button onClick={fetchAnnexes} disabled={loading} className="sa-btn-primary"
-              style={{ width:'100%', justifyContent:'center', padding:'0.5rem', borderRadius:9, marginBottom:'0.45rem' }}>
-              {loading
-                ? <><span style={{ width:13,height:13,border:'2px solid rgba(255,255,255,0.3)',borderTopColor:'#fff',borderRadius:'50%',animation:'sa-spin 0.7s linear infinite',display:'inline-block' }} />Searching…</>
-                : '🔍  Apply Filters'}
+            <button onClick={fetchAnnexes} disabled={loading}
+              className="sa-font-display inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#3b4f86] py-2 text-sm font-semibold text-white hover:bg-[#4c62a3] disabled:opacity-50 transition-colors">
+              {loading ? (
+                <>
+                  <svg className="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                  </svg>
+                  Searching…
+                </>
+              ) : '🔍  Apply Filters'}
             </button>
-            <div style={{ display:'flex', gap:5 }}>
-              <button className="sa-quick-action" onClick={()=>{setMinPrice('');setMaxPrice('');setGender('');setMaxDistance(5000);}}>↺ Reset</button>
-              <button className="sa-quick-action" onClick={scrollToLanding}>ℹ About</button>
-            </div>
+
+            <button onClick={() => { setMinPrice(''); setMaxPrice(''); setGender(''); setMaxDistance(5000); }}
+              className="w-full rounded-xl border border-[#232E45] py-1.5 text-xs font-semibold text-gray-500 hover:border-[#3b4f86] hover:text-gray-300 transition-colors">
+              ↺ Reset Filters
+            </button>
           </div>
 
-          {/* ── Card list — fills remaining height ── */}
-          <div className="sa-card-list sa-scrollbar" style={{ flex:1, overflowY:'auto', minHeight:0 }}>
-            {/* sticky header */}
-            <div style={{ padding:'0.55rem 1rem 0.4rem', display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:0, background:'#060f1e', zIndex:10, borderBottom:'1px solid #0e1a2e' }}>
-              <p style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.1em', color:'#4b6d9e', fontWeight:600, margin:0 }}>
-                {annexes.length} {annexes.length===1?'Annex':'Annexes'} Found
+          {/* Card list */}
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, scrollbarWidth: 'thin', scrollbarColor: '#172240 transparent' }}>
+            <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#060F1E', borderBottom: '1px solid #0e1a2e' }}
+              className="flex items-center justify-between px-4 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-600">
+                {annexes.length} {annexes.length === 1 ? 'Annex' : 'Annexes'} Found
               </p>
-              <div style={{ position:'relative' }}>
-                <button onClick={()=>setShowSortMenu(v=>!v)}
-                  style={{ fontSize:10, color:'#4b6d9e', background:'#0b1628', border:'1px solid #172240', borderRadius:5, padding:'2px 9px', cursor:'pointer' }}>
-                  Sort: {sortBy==='distance'?'Distance ↑':'Price ↑'}
+              <div className="relative">
+                <button onClick={() => setShowSortMenu(v => !v)}
+                  className="rounded-lg border border-[#232E45] bg-[#0B1628] px-2.5 py-1 text-[10px] font-semibold text-gray-500 hover:border-[#3b4f86] hover:text-gray-300 transition-colors">
+                  Sort: {sortBy === 'distance' ? 'Distance ↑' : 'Price ↑'}
                 </button>
                 {showSortMenu && (
-                  <div style={{ position:'absolute', right:0, top:'110%', background:'#0b1628', border:'1px solid #172240', borderRadius:8, overflow:'hidden', zIndex:50, minWidth:130 }}>
-                    {[['distance','Nearest First'],['price','Lowest Price']].map(([val,lbl])=>(
-                      <button key={val} onClick={()=>{setSortBy(val);setShowSortMenu(false);}}
-                        style={{ display:'block', width:'100%', textAlign:'left', padding:'0.45rem 0.8rem', fontSize:10, fontWeight:600, color:sortBy===val?'#60a5fa':'#4b6d9e', background:sortBy===val?'rgba(59,130,246,0.08)':'transparent', border:'none', cursor:'pointer' }}>
+                  <div className="absolute right-0 top-full mt-1 z-50 overflow-hidden rounded-xl border border-[#232E45] bg-[#0B1628]" style={{ minWidth: 130 }}>
+                    {[['distance', 'Nearest First'], ['price', 'Lowest Price']].map(([val, lbl]) => (
+                      <button key={val} onClick={() => { setSortBy(val); setShowSortMenu(false); }}
+                        className={`block w-full px-4 py-2.5 text-left text-[11px] font-semibold transition-colors hover:bg-[#232E45] ${sortBy === val ? 'text-[#6b84c9]' : 'text-gray-500'}`}>
                         {lbl}
                       </button>
                     ))}
@@ -495,147 +237,194 @@ function SearchAnnex() {
               </div>
             </div>
 
-            {/* cards */}
-            <div style={{ padding:'0.55rem 0.85rem', display:'flex', flexDirection:'column', gap:6 }}>
-              {sortedAnnexes.map((annex,idx) => {
+            <div className="p-3 flex flex-col gap-2">
+              {sortedAnnexes.map((annex, idx) => {
                 const badge    = genderBadge(annex.preferredGender);
-                const isActive = activeCard===annex._id;
+                const isActive = activeCard === annex._id;
                 const tier     = getPriceTier(annex.price);
-                const isTop    = idx===0 && annexes.length>1;
+                const isTop    = idx === 0 && annexes.length > 1;
                 return (
-                  <div key={annex._id} className="sa-annex-card"
-                    style={{ position:'relative', borderRadius:11, border:`1px solid ${isActive?'#2563eb':'#172240'}`, background:isActive?'#0f1e38':'#0b1628', padding:'0.75rem', cursor:'pointer', boxShadow:isActive?'0 4px 20px rgba(37,99,235,0.2)':'none', paddingTop:isTop?'1.2rem':'0.75rem' }}
-                    onClick={()=>{ setActiveCard(annex._id); goToDetails(annex); }}
-                    onMouseEnter={()=>{ setSelectedAnnex(annex); getCommute(annex); }}>
+                  <div key={annex._id}
+                    onClick={() => { setActiveCard(annex._id); goToDetails(annex); }}
+                    onMouseEnter={() => { setSelectedAnnex(annex); getCommute(annex); }}
+                    className={`relative rounded-2xl border p-3 cursor-pointer transition-all duration-200
+                      ${isActive
+                        ? 'border-[#3b4f86] bg-[#0B1628] shadow-lg shadow-[#3b4f86]/10'
+                        : 'border-[#232E45] bg-[#0B1628] hover:border-[#2e3c5e] hover:translate-x-0.5'}`}>
 
-                    {isTop && <div className="sa-rank-badge" style={{ background:'rgba(59,130,246,0.18)', color:'#60a5fa', border:'1px solid rgba(59,130,246,0.3)' }}>★ Top Pick</div>}
-                    <div style={{ position:'absolute', left:0, top:8, bottom:8, width:2, borderRadius:9999, background:isActive?'#3b82f6':'transparent', transition:'background 0.2s' }} />
+                    {isActive && <div className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full bg-[#3b4f86]" />}
 
-                    <div style={{ display:'flex', gap:9 }}>
-                      <div style={{ width:54, height:54, borderRadius:8, overflow:'hidden', flexShrink:0, position:'relative' }}>
-                        {annex.imageUrl
-                          ? <img src={`${API_BASE}${annex.imageUrl}`} alt={annex.title} className="sa-card-img" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
-                          : <div style={{ width:'100%', height:'100%', background:'#0f1e38', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, color:'#2a4070' }}>No img</div>}
-                        <div style={{ position:'absolute', bottom:2, right:2, fontSize:7, fontWeight:700, color:'rgba(255,255,255,0.45)', background:'rgba(0,0,0,0.5)', borderRadius:3, padding:'1px 3px' }}>#{idx+1}</div>
+                    {isTop && (
+                      <div className="absolute -top-px right-3 rounded-b-lg border border-t-0 border-[#3b4f86]/30 bg-[#3b4f86]/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#6b84c9]">
+                        ★ Top Pick
                       </div>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <p style={{ fontSize:12, fontWeight:600, color:'#e2e8f0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', margin:'0 0 2px' }}>{annex.title}</p>
-                        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5 }}>
-                          <span style={{ color:'#60a5fa', fontWeight:700, fontSize:13 }}>Rs. {annex.price?.toLocaleString()}<span style={{ color:'#4b6d9e', fontSize:10, fontWeight:400 }}>/mo</span></span>
-                          {tier && <span className={`sa-price-trend ${tier.cls}`}>{tier.label}</span>}
+                    )}
+
+                    <div className="flex gap-3" style={{ paddingTop: isTop ? '0.5rem' : 0 }}>
+                      <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl border border-[#232E45]">
+                        {annex.imageUrl
+                          ? <img src={`${API_BASE}${annex.imageUrl}`} alt={annex.title}
+                              className="h-full w-full object-cover transition-transform duration-300 hover:scale-105" />
+                          : <div className="flex h-full w-full items-center justify-center bg-[#232E45] text-[9px] text-gray-600">No img</div>}
+                        <span className="absolute bottom-0.5 right-0.5 rounded bg-black/60 px-1 py-px text-[8px] font-bold text-gray-400">#{idx + 1}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="sa-font-display truncate text-xs font-semibold text-white mb-1">{annex.title}</p>
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="sa-font-display text-sm font-bold text-[#6b84c9]">
+                            Rs. {annex.price?.toLocaleString()}
+                            <span className="text-[10px] font-normal text-gray-600">/mo</span>
+                          </span>
+                          {tier && (
+                            <span className={`rounded border px-1.5 py-px text-[9px] font-bold ${tier.bg} ${tier.color} ${tier.border}`}>
+                              {tier.label}
+                            </span>
+                          )}
                         </div>
-                        <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
-                          <span className={`${badge.bg} ${badge.text} ${badge.border}`} style={{ fontSize:9, fontWeight:600, padding:'2px 6px', borderRadius:999, border:'1px solid', display:'inline-block' }}>{badge.label}</span>
-                          {annex.distance && <span style={{ fontSize:9, fontWeight:600, padding:'2px 6px', borderRadius:999, background:'rgba(20,150,80,0.2)', color:'#4ade80', border:'1px solid rgba(74,222,128,0.3)' }}>{(annex.distance/1000).toFixed(1)} km</span>}
-                          {annex.features?.length>0 && <span style={{ fontSize:9, fontWeight:600, padding:'2px 6px', borderRadius:999, background:'#0f1e38', color:'#4b6d9e', border:'1px solid #1f3058' }}>{annex.features.length} amenities</span>}
+                        <div className="flex flex-wrap gap-1">
+                          <span className={`rounded-full border px-2 py-px text-[9px] font-semibold ${badge.cls}`}>{badge.label}</span>
+                          {annex.distance && (
+                            <span className="rounded-full border border-green-500/30 bg-green-500/10 px-2 py-px text-[9px] font-semibold text-[#4ade80]">
+                              {(annex.distance / 1000).toFixed(1)} km
+                            </span>
+                          )}
+                          {annex.features?.length > 0 && (
+                            <span className="rounded-full border border-[#232E45] bg-[#060F1E] px-2 py-px text-[9px] font-semibold text-gray-500">
+                              {annex.features.length} amenities
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
 
                     {isActive && commuteInfo && (
-                      <div style={{ marginTop:7, paddingTop:7, borderTop:'1px solid #172240', display:'flex', gap:7, alignItems:'center' }}>
-                        <span className="sa-commute-badge">🚗 {commuteInfo.distance_km} km · {commuteInfo.duration_mins} min</span>
-                        <span style={{ fontSize:9, color:'#2a4070', marginLeft:'auto' }}>to SLIIT</span>
+                      <div className="mt-2.5 flex items-center gap-2 border-t border-[#232E45] pt-2.5">
+                        <span className="sa-font-display inline-flex items-center gap-1.5 rounded-lg border border-green-500/20 bg-green-500/10 px-2.5 py-1 text-[10px] font-bold text-[#4ade80]">
+                          🚗 {commuteInfo.distance_km} km · {commuteInfo.duration_mins} min
+                        </span>
+                        <span className="ml-auto text-[9px] text-gray-600">to SLIIT</span>
                       </div>
                     )}
                   </div>
                 );
               })}
 
-              {!loading && annexes.length===0 && (
-                <div style={{ textAlign:'center', padding:'2.5rem 0' }}>
-                  <div style={{ fontSize:'2rem', marginBottom:8 }}>🔍</div>
-                  <p style={{ fontSize:12, fontWeight:600, color:'#4b6d9e' }}>No annexes found</p>
-                  <p style={{ fontSize:10, color:'#2a4070', marginTop:3 }}>Try adjusting your filters</p>
+              {!loading && annexes.length === 0 && (
+                <div className="py-12 text-center">
+                  <div className="text-3xl mb-3">🔍</div>
+                  <p className="sa-font-display text-sm font-semibold text-gray-500">No annexes found</p>
+                  <p className="text-xs text-gray-600 mt-1">Try adjusting your filters</p>
                 </div>
               )}
-            </div>
-
-            <div style={{ padding:'0.65rem 1rem 1.1rem', textAlign:'center' }}>
-              <button onClick={scrollToLanding} className="sa-scroll-hint"
-                style={{ background:'rgba(37,99,235,0.08)', border:'1px solid rgba(59,130,246,0.2)', borderRadius:9, padding:'0.4rem 1rem', color:'rgba(96,165,250,0.6)', fontSize:10, fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5 }}>
-                ↓ About UNI NEST
-              </button>
             </div>
           </div>
         </div>
 
-        {/* ════ MAP ════ */}
-        <div style={{ flex:1, position:'relative' }}>
-          <Map mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
-            initialViewState={{ longitude:sliitLocation.lng, latitude:sliitLocation.lat, zoom:13 }}
-            mapStyle="mapbox://styles/mapbox/dark-v11" style={{ width:'100%', height:'100%' }}>
-
+        {/* ── MAP ── */}
+        <div style={{ flex: 1, position: 'relative' }}>
+          <Map
+            mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
+            initialViewState={{ longitude: sliitLocation.lng, latitude: sliitLocation.lat, zoom: 13 }}
+            mapStyle="mapbox://styles/mapbox/dark-v11"
+            style={{ width: '100%', height: '100%' }}
+          >
             <Marker longitude={sliitLocation.lng} latitude={sliitLocation.lat}>
-              <div style={{ position:'relative', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <div style={{ width:38, height:38, borderRadius:'50%', background:'#dc2626', border:'2px solid #fff', boxShadow:'0 0 16px rgba(220,38,38,0.5)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>🎓</div>
-                <div style={{ position:'absolute', bottom:-18, fontSize:9, color:'#fff', fontWeight:700, background:'rgba(0,0,0,0.65)', padding:'2px 6px', borderRadius:4, whiteSpace:'nowrap' }}>SLIIT</div>
+              <div className="relative flex items-center justify-center">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-red-600 text-base shadow-lg shadow-red-500/40">🎓</div>
+                <div className="absolute whitespace-nowrap rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-bold text-white" style={{ bottom: -20 }}>SLIIT</div>
               </div>
             </Marker>
 
             {annexes.map(annex => (
-              <Marker key={annex._id} longitude={annex.location.coordinates[0]} latitude={annex.location.coordinates[1]}
-                onClick={e=>{ e.originalEvent.stopPropagation(); setSelectedAnnex(annex); getCommute(annex); setActiveCard(annex._id); }}>
-                <div style={{ position:'relative', cursor:'pointer', transform:activeCard===annex._id?'scale(1.12)':'scale(1)', transition:'transform 0.18s', zIndex:activeCard===annex._id?20:1 }}>
-                  <div style={{ padding:'4px 10px', borderRadius:999, fontSize:11, fontWeight:700, whiteSpace:'nowrap', background:activeCard===annex._id?'#2563eb':'#0b1628', border:`1px solid ${activeCard===annex._id?'#60a5fa':'#1f3058'}`, color:activeCard===annex._id?'#fff':'#60a5fa', boxShadow:activeCard===annex._id?'0 0 14px rgba(37,99,235,0.5)':'none', transition:'all 0.18s' }}>{annex.title}</div>
-                  <div style={{ position:'absolute', left:'50%', transform:'translateX(-50%)', bottom:-5, width:8, height:8, rotate:'45deg', background:activeCard===annex._id?'#2563eb':'#0b1628', borderRight:`1px solid ${activeCard===annex._id?'#60a5fa':'#1f3058'}`, borderBottom:`1px solid ${activeCard===annex._id?'#60a5fa':'#1f3058'}` }} />
+              <Marker key={annex._id}
+                longitude={annex.location.coordinates[0]}
+                latitude={annex.location.coordinates[1]}
+                onClick={e => { e.originalEvent.stopPropagation(); setSelectedAnnex(annex); getCommute(annex); setActiveCard(annex._id); }}>
+                <div className={`cursor-pointer transition-transform duration-200 ${activeCard === annex._id ? 'scale-110' : 'scale-100'}`}>
+                  <div className={`sa-font-display rounded-full px-3 py-1 text-[11px] font-bold whitespace-nowrap border transition-all duration-200
+                    ${activeCard === annex._id
+                      ? 'bg-[#3b4f86] border-[#6b84c9] text-white shadow-lg shadow-[#3b4f86]/50'
+                      : 'bg-[#0B1628] border-[#232E45] text-[#6b84c9]'}`}>
+                    {annex.title}
+                  </div>
+                  <div
+                    className={`mx-auto rotate-45 border-r border-b ${activeCard === annex._id ? 'bg-[#3b4f86] border-[#6b84c9]' : 'bg-[#0B1628] border-[#232E45]'}`}
+                    style={{ width: 8, height: 8, marginTop: -1 }}
+                  />
                 </div>
               </Marker>
             ))}
 
             {selectedAnnex && (
-              <Popup longitude={selectedAnnex.location.coordinates[0]} latitude={selectedAnnex.location.coordinates[1]}
-                anchor="bottom" offset={20} onClose={()=>{ setSelectedAnnex(null); setCommuteInfo(null); setActiveCard(null); }} className="hostel-popup">
-                <style>{`.hostel-popup .mapboxgl-popup-content{background:#0b1628;border:1px solid #1a2e50;border-radius:14px;padding:0;box-shadow:0 20px 60px rgba(0,0,0,0.6);font-family:'DM Sans',sans-serif;overflow:hidden;width:230px}.hostel-popup .mapboxgl-popup-tip{border-top-color:#1a2e50}.hostel-popup .mapboxgl-popup-close-button{color:#4a6ba3;font-size:18px;padding:6px 10px;top:2px;right:2px}.hostel-popup .mapboxgl-popup-close-button:hover{color:#fff;background:transparent}`}</style>
+              <Popup
+                longitude={selectedAnnex.location.coordinates[0]}
+                latitude={selectedAnnex.location.coordinates[1]}
+                anchor="bottom" offset={20}
+                onClose={() => { setSelectedAnnex(null); setCommuteInfo(null); setActiveCard(null); }}
+                className="annexrent-popup">
                 {selectedAnnex.imageUrl
-                  ? <div style={{ position:'relative' }}><img src={`${API_BASE}${selectedAnnex.imageUrl}`} alt={selectedAnnex.title} style={{ width:'100%', height:110, objectFit:'cover', display:'block' }} /><div style={{ position:'absolute', bottom:6, left:6, background:'rgba(6,15,30,0.85)', border:'1px solid rgba(59,130,246,0.3)', borderRadius:6, padding:'3px 8px', fontSize:11, fontWeight:700, color:'#60a5fa' }}>Rs. {selectedAnnex.price?.toLocaleString()}/mo</div></div>
-                  : <div style={{ width:'100%', height:80, background:'#0f1e38', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'#2a4070' }}>No photo</div>}
-                <div style={{ padding:'0.85rem 1rem' }}>
-                  <p style={{ fontSize:13, fontWeight:700, color:'#e2e8f0', margin:'0 0 2px' }}>{selectedAnnex.title}</p>
-                  {selectedAnnex.selectedAddress && <p style={{ fontSize:11, color:'#4b6d9e', marginBottom:10, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>📍 {selectedAnnex.selectedAddress}</p>}
-                  <div style={{ background:'#0f1e38', border:'1px solid #1f3058', borderRadius:8, padding:'0.55rem 0.75rem', marginBottom:10 }}>
-                    {commuteInfo
-                      ? <><p style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.1em', color:'#2a4070', marginBottom:4 }}>Commute to SLIIT</p><div style={{ display:'flex', alignItems:'center', gap:10 }}><span style={{ color:'#4ade80', fontWeight:700, fontSize:13 }}>{commuteInfo.distance_km} km</span><span style={{ color:'#2a4070', fontSize:11 }}>•</span><span style={{ color:'#94a3b8', fontSize:11 }}>{commuteInfo.duration_mins} mins by car</span></div></>
-                      : <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:11, color:'#4b6d9e' }}><span style={{ width:12, height:12, border:'1.5px solid #2a4070', borderTopColor:'#3b82f6', borderRadius:'50%', animation:'sa-spin 0.7s linear infinite', display:'inline-block', flexShrink:0 }} />Calculating commute…</div>}
+                  ? <div className="relative">
+                      <img src={`${API_BASE}${selectedAnnex.imageUrl}`} alt={selectedAnnex.title}
+                        style={{ width: '100%', height: 110, objectFit: 'cover', display: 'block' }} />
+                      <div className="sa-font-display absolute bottom-2 left-2 rounded-lg border border-[#3b4f86]/40 bg-[#060F1E]/90 px-2 py-0.5 text-[11px] font-bold text-[#6b84c9]">
+                        Rs. {selectedAnnex.price?.toLocaleString()}/mo
+                      </div>
+                    </div>
+                  : <div className="flex items-center justify-center bg-[#232E45] text-[11px] text-gray-600" style={{ height: 80 }}>No photo</div>}
+                <div className="p-4 space-y-3">
+                  <div>
+                    <p className="sa-font-display text-sm font-semibold text-white leading-tight">{selectedAnnex.title}</p>
+                    {selectedAnnex.selectedAddress && (
+                      <p className="text-[11px] text-gray-500 mt-0.5 truncate">📍 {selectedAnnex.selectedAddress}</p>
+                    )}
                   </div>
-                  <div style={{ display:'flex', gap:6 }}>
-                    <button onClick={()=>goToDetails(selectedAnnex)} className="sa-btn-primary" style={{ flex:1, justifyContent:'center', padding:'0.5rem', borderRadius:8, fontSize:12 }}>View Details →</button>
-                    <button onClick={()=>{ setSelectedAnnex(null); setCommuteInfo(null); setActiveCard(null); }} style={{ background:'#0f1e38', border:'1px solid #1f3058', borderRadius:8, padding:'0.5rem 0.7rem', color:'#4b6d9e', fontSize:12, cursor:'pointer' }}>✕</button>
+                  <div className="rounded-xl border border-[#232E45] bg-[#060F1E] p-3">
+                    {commuteInfo
+                      ? <>
+                          <p className="text-[9px] font-semibold uppercase tracking-widest text-gray-600 mb-1">Commute to SLIIT</p>
+                          <div className="flex items-center gap-2">
+                            <span className="sa-font-display text-sm font-bold text-[#4ade80]">{commuteInfo.distance_km} km</span>
+                            <span className="text-gray-600">·</span>
+                            <span className="text-xs text-gray-400">{commuteInfo.duration_mins} min by car</span>
+                          </div>
+                        </>
+                      : <div className="flex items-center gap-2 text-[11px] text-gray-500">
+                          <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                          </svg>
+                          Calculating commute…
+                        </div>}
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => goToDetails(selectedAnnex)}
+                      className="sa-font-display flex-1 inline-flex items-center justify-center rounded-xl bg-[#3b4f86] py-2 text-xs font-semibold text-white hover:bg-[#4c62a3] transition-colors">
+                      View Details →
+                    </button>
+                    <button onClick={() => { setSelectedAnnex(null); setCommuteInfo(null); setActiveCard(null); }}
+                      className="rounded-xl border border-[#232E45] bg-[#060F1E] px-3 py-2 text-xs text-gray-500 hover:border-[#3b4f86] hover:text-gray-300 transition-colors">
+                      ✕
+                    </button>
                   </div>
                 </div>
               </Popup>
             )}
           </Map>
 
-          <div className="sa-map-header">
-            <div className="sa-map-header-dot" />
-            <span className="sa-map-header-text">Live Map · SLIIT Malabe</span>
-            <span className="sa-map-header-count">{annexes.length} listings</span>
+          {/* Map overlays */}
+          <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2 flex items-center gap-3 rounded-full border border-[#232E45] bg-[#060F1E]/90 px-4 py-2 backdrop-blur-sm">
+            <div className="h-1.5 w-1.5 rounded-full bg-[#22c55e] animate-pulse" />
+            <span className="text-[11px] font-semibold text-gray-500">Live Map · SLIIT Malabe</span>
+            <span className="sa-font-display rounded-full border border-[#3b4f86]/30 bg-[#3b4f86]/15 px-2.5 py-0.5 text-[11px] font-bold text-[#6b84c9]">{annexes.length} listings</span>
           </div>
 
-          <div style={{ position:'absolute', bottom:24, left:16, background:'rgba(11,22,40,0.88)', backdropFilter:'blur(10px)', border:'1px solid #1a2e50', borderRadius:12, padding:'0.5rem 0.85rem', display:'flex', alignItems:'center', gap:13, fontSize:10, color:'#4b6d9e' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:5 }}><div style={{ width:9, height:9, borderRadius:'50%', background:'#dc2626' }} /><span>SLIIT Campus</span></div>
-            <div style={{ display:'flex', alignItems:'center', gap:5 }}><div style={{ width:9, height:9, borderRadius:'50%', background:'#2563eb' }} /><span>Annex Listing</span></div>
-            <div style={{ color:'#1a2e50' }}>|</div>
+          <div className="absolute bottom-6 left-4 flex items-center gap-4 rounded-2xl border border-[#232E45] bg-[#060F1E]/90 px-4 py-2.5 backdrop-blur-sm text-[10px] text-gray-600">
+            <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full bg-red-600" /><span>SLIIT Campus</span></div>
+            <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full bg-[#3b4f86]" /><span>Annex Listing</span></div>
+            <div className="text-gray-700">|</div>
             <span>{annexes.length} listings shown</span>
           </div>
-
-          <button onClick={scrollToLanding} className="sa-map-scroll-btn">↓ About UNI NEST</button>
         </div>
-      </div>
-
-      {/* ════ LANDING ════ */}
-      <div ref={landingRef} className="sa-landing">
-        <div className="sa-landing-orb-1" /><div className="sa-landing-orb-2" />
-        <hr className="sa-divider" />
-        <AboutSection
-          onBackToMap={()=>window.scrollTo({top:0,behavior:'smooth'})}
-          onFeatures={()=>document.getElementById('sa-features')?.scrollIntoView({behavior:'smooth'})}
-        />
-        <FeaturesSection />
-        <HowItWorksSection />
-        <TechTeamSection />
-        <CTASection onBackToMap={()=>window.scrollTo({top:0,behavior:'smooth'})} />
       </div>
     </div>
   );

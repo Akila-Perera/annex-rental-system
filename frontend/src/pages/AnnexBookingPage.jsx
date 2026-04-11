@@ -7,6 +7,10 @@ const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=1200&q=80';
 
 const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+
+  .font-display { font-family: 'Syne', sans-serif; }
+
   @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(28px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -57,6 +61,7 @@ const styles = `
     background: #050c1a;
     position: relative;
     overflow: hidden;
+    font-family: 'DM Sans', sans-serif;
   }
   .hero-bg {
     position: absolute; inset: 0;
@@ -108,6 +113,7 @@ const styles = `
     padding: 0.72rem 1.2rem 0.72rem 3rem;
     color: #e8eeff;
     font-size: 0.88rem;
+    font-family: 'DM Sans', sans-serif;
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
     backdrop-filter: blur(12px);
@@ -155,6 +161,7 @@ const styles = `
     border-radius: 50px;
     padding: 0.35rem 1rem;
     font-size: 0.78rem;
+    font-family: 'DM Sans', sans-serif;
     color: rgba(255,255,255,0.6);
   }
   .stat-pill strong { color: #7ab8fc; font-weight: 700; }
@@ -195,6 +202,7 @@ const styles = `
     backdrop-filter: blur(10px);
     font-size: 11px;
     font-weight: 800;
+    font-family: 'DM Sans', sans-serif;
     letter-spacing: 0.07em;
     padding: 0.32rem 0.85rem;
     border-radius: 999px;
@@ -210,6 +218,7 @@ const styles = `
     display: flex; align-items: center; gap: 5px;
     font-size: 11px;
     font-weight: 800;
+    font-family: 'DM Sans', sans-serif;
     padding: 0.32rem 0.75rem;
     border-radius: 999px;
     animation: green-pulse 2.2s ease-in-out infinite;
@@ -245,6 +254,7 @@ const styles = `
   .location-text {
     font-size: 0.76rem !important;
     font-weight: 700 !important;
+    font-family: 'DM Sans', sans-serif !important;
     color: #6ee7b7 !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
@@ -259,6 +269,7 @@ const styles = `
     padding: 0.18rem 0.55rem;
     font-size: 0.68rem;
     font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
     white-space: nowrap;
     transition: transform 0.2s;
   }
@@ -299,6 +310,7 @@ const styles = `
     background: transparent;
     border: 1px solid rgba(45,126,247,0.35);
     color: #5ba4fa;
+    font-family: 'DM Sans', sans-serif;
     transition: all 0.18s;
   }
   .btn-glass-outline:hover {
@@ -310,6 +322,7 @@ const styles = `
   .btn-glow {
     background: linear-gradient(135deg, #2d7ef7 0%, #1a5fd4 100%);
     box-shadow: 0 0 20px rgba(45,126,247,0.35);
+    font-family: 'DM Sans', sans-serif;
     transition: all 0.18s;
   }
   .btn-glow:hover {
@@ -322,6 +335,7 @@ const styles = `
     border: 1px solid rgba(255,255,255,0.12);
     backdrop-filter: blur(10px);
     color: rgba(255,255,255,0.75);
+    font-family: 'DM Sans', sans-serif;
     transition: all 0.2s;
   }
   .back-glass:hover {
@@ -358,6 +372,7 @@ const styles = `
 
   .result-label {
     font-size: 0.78rem;
+    font-family: 'DM Sans', sans-serif;
     color: rgba(255,255,255,0.3);
     text-align: center;
     margin-bottom: 1.2rem;
@@ -474,10 +489,10 @@ function AnnexBookingPage() {
         {/* ── Header ── */}
         <div className="header-animate" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '2.5rem' }}>
           <div>
-            <p style={{ fontSize: 11, color: 'rgba(45,126,247,0.85)', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+            <p style={{ fontSize: 11, color: 'rgba(45,126,247,0.85)', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.35rem', fontFamily: "'DM Sans', sans-serif" }}>
               ✦ &nbsp;Student Accommodation
             </p>
-            <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: '#fff', textShadow: '0 0 50px rgba(45,126,247,0.45)', letterSpacing: '-0.01em', margin: 0 }}>
+            <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: '#fff', textShadow: '0 0 50px rgba(45,126,247,0.45)', letterSpacing: '-0.01em', margin: 0, fontFamily: "'Syne', sans-serif" }}>
               Annex Booking Gallery
             </h1>
           </div>
@@ -488,7 +503,7 @@ function AnnexBookingPage() {
 
         {/* ── Hero tagline ── */}
         <div className="hero-tagline">
-          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.45)', maxWidth: 560, margin: '0 auto', lineHeight: 1.75 }}>
+          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.45)', maxWidth: 560, margin: '0 auto', lineHeight: 1.75, fontFamily: "'DM Sans', sans-serif" }}>
             Discover comfortable, affordable annexes located steps from the SLIIT Malabe Campus.
             Browse verified listings, explore amenities, and book your perfect student home — all in one place.
           </p>
@@ -531,20 +546,20 @@ function AnnexBookingPage() {
         {!loading && error && (
           <div className="empty-state">
             <span className="empty-icon">⚠️</span>
-            <p style={{ color: 'rgba(255,100,100,0.7)', fontSize: 14 }}>{error}</p>
+            <p style={{ color: 'rgba(255,100,100,0.7)', fontSize: 14, fontFamily: "'DM Sans', sans-serif" }}>{error}</p>
           </div>
         )}
 
         {!loading && !error && filtered.length === 0 && (
           <div className="empty-state">
             <span className="empty-icon">🔍</span>
-            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 14 }}>
+            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 14, fontFamily: "'DM Sans', sans-serif" }}>
               {search ? `No annexes matching "${search}"` : 'No annexes available.'}
             </p>
             {search && (
               <button
                 onClick={() => setSearch('')}
-                style={{ marginTop: '0.75rem', background: 'rgba(45,126,247,0.15)', border: '1px solid rgba(45,126,247,0.3)', color: '#5ba4fa', borderRadius: 8, padding: '0.4rem 1rem', fontSize: 13, cursor: 'pointer' }}
+                style={{ marginTop: '0.75rem', background: 'rgba(45,126,247,0.15)', border: '1px solid rgba(45,126,247,0.3)', color: '#5ba4fa', borderRadius: 8, padding: '0.4rem 1rem', fontSize: 13, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
               >
                 Clear search
               </button>
@@ -605,7 +620,7 @@ function AnnexBookingPage() {
 
                     {/* Price overlay */}
                     <div style={{ position: 'absolute', bottom: 12, left: 12, zIndex: 2 }}>
-                      <span style={{ background: 'rgba(5,12,26,0.75)', border: '1px solid rgba(45,126,247,0.3)', backdropFilter: 'blur(8px)', borderRadius: 8, padding: '0.28rem 0.65rem', fontSize: '0.8rem', fontWeight: 700, color: '#7ab8fc' }}>
+                      <span style={{ background: 'rgba(5,12,26,0.75)', border: '1px solid rgba(45,126,247,0.3)', backdropFilter: 'blur(8px)', borderRadius: 8, padding: '0.28rem 0.65rem', fontSize: '0.8rem', fontWeight: 700, fontFamily: "'DM Sans', sans-serif", color: '#7ab8fc' }}>
                         Rs. {Number(annex.price || 0).toLocaleString()} /mo
                       </span>
                     </div>
@@ -614,8 +629,8 @@ function AnnexBookingPage() {
                   {/* ── Body ── */}
                   <div style={{ padding: '1rem 1.1rem 1.1rem' }}>
 
-                    {/* Title */}
-                    <h2 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e8eeff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: '0 0 0.5rem' }}>
+                    {/* Title — Syne font */}
+                    <h2 style={{ fontSize: '0.95rem', fontWeight: 700, fontFamily: "'Syne', sans-serif", color: '#e8eeff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: '0 0 0.5rem' }}>
                       {annex.title}
                     </h2>
 
@@ -635,8 +650,8 @@ function AnnexBookingPage() {
                       </span>
                     </div>
 
-                    {/* Description */}
-                    <p style={{ fontSize: '0.76rem', color: 'rgba(255,255,255,0.42)', lineHeight: 1.65, margin: '0 0 0.85rem', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {/* Description — DM Sans */}
+                    <p style={{ fontSize: '0.76rem', fontFamily: "'DM Sans', sans-serif", color: 'rgba(255,255,255,0.42)', lineHeight: 1.65, margin: '0 0 0.85rem', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                       {desc}
                     </p>
 
@@ -679,7 +694,7 @@ function AnnexBookingPage() {
 
         {/* ── Footer note ── */}
         {!loading && !error && annexes.length > 0 && (
-          <p style={{ textAlign: 'center', fontSize: '0.74rem', color: 'rgba(255,255,255,0.2)', marginTop: '3rem' }}>
+          <p style={{ textAlign: 'center', fontSize: '0.74rem', fontFamily: "'DM Sans', sans-serif", color: 'rgba(255,255,255,0.2)', marginTop: '3rem' }}>
             All listings are verified and updated regularly. Prices may vary based on availability and lease duration.
           </p>
         )}
