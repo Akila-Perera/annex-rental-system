@@ -4,8 +4,96 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
+// ── Step indicator ──────────────────────────────────────────────────
+function StepBadge({ number, label, active, done }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div
+        className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors
+          ${done ? 'bg-[#22c55e] text-white' : active ? 'bg-[#3b4f86] text-white' : 'bg-[#232E45] text-gray-400'}`}
+      >
+        {done ? (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+        ) : number}
+      </div>
+      <span className={`text-xs font-medium hidden sm:block ${active ? 'text-white' : done ? 'text-[#22c55e]' : 'text-gray-500'}`}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+// ── Section card wrapper ────────────────────────────────────────────
+function SectionCard({ icon, title, subtitle, children, accent }) {
+  return (
+    <div className={`rounded-2xl border bg-[#0B1628] p-6 space-y-5 ${accent ? 'border-[#3b4f86]' : 'border-[#232E45]'}`}>
+      <div className="flex items-start gap-3">
+        {icon && (
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-[#232E45] text-[#6b84c9]">
+            {icon}
+          </div>
+        )}
+        <div>
+          <h2 className="text-sm font-semibold text-white leading-tight">{title}</h2>
+          {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ── Labelled field ──────────────────────────────────────────────────
+function Field({ label, required, hint, children }) {
+  return (
+    <div className="space-y-1">
+      <label className="block text-xs font-medium text-gray-300">
+        {label}
+        {required && <span className="ml-1 text-red-400">*</span>}
+      </label>
+      {children}
+      {hint && <p className="text-[11px] text-gray-500 mt-0.5">{hint}</p>}
+    </div>
+  );
+}
+
+// ── Check item for summary ──────────────────────────────────────────
+function CheckItem({ done, label }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border ${done ? 'border-[#22c55e] bg-[#22c55e]' : 'border-[#232E45] bg-transparent'}`}>
+        {done && (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5 text-white" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+        )}
+      </div>
+      <span className={`text-xs ${done ? 'text-gray-300' : 'text-gray-500'}`}>{label}</span>
+    </div>
+  );
+}
+
+// ── Summary row ─────────────────────────────────────────────────────
+function SummaryRow({ label, value, highlight }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-xs text-gray-400">{label}</span>
+      <span className={`text-xs font-medium truncate max-w-[160px] text-right ${highlight ? 'text-white' : 'text-gray-600'}`}>
+        {value || '—'}
+      </span>
+    </div>
+  );
+}
+
+const inputCls =
+  'mt-0.5 w-full rounded-xl border border-[#232E45] bg-[#060F1E] px-3 py-2.5 text-sm text-gray-100 placeholder-gray-600 shadow-sm transition-colors focus:border-[#3b4f86] focus:outline-none focus:ring-1 focus:ring-[#3b4f86] hover:border-[#2e3c5e]';
+
+// ── Main component ──────────────────────────────────────────────────
 function AddAnnexPage() {
   const { user } = useAuth();
+
   // Form State
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
@@ -16,18 +104,20 @@ function AddAnnexPage() {
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [selectedAddress, setSelectedAddress] = useState('');
-  
+
   // Location State (Default to SLIIT Malabe area)
   const [pinLocation, setPinLocation] = useState({ lat: 6.9147, lng: 79.9723 });
-  
+
   // Status message state
   const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   // Handle Map Click to move the pin
   const handleMapClick = async (e) => {
     setPinLocation({
       lng: e.lngLat.lng,
-      lat: e.lngLat.lat
+      lat: e.lngLat.lat,
     });
 
     try {
@@ -36,7 +126,6 @@ function AddAnnexPage() {
         setSelectedAddress('');
         return;
       }
-
       const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${e.lngLat.lng},${e.lngLat.lat}.json?access_token=${token}&limit=1`;
       const response = await axios.get(url);
       const placeName = response.data?.features?.[0]?.place_name || '';
@@ -50,6 +139,7 @@ function AddAnnexPage() {
   // Handle Form Submission
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setMessage('');
 
     if (!user?.id) {
       setMessage('error:Please log in as an annex owner before adding a listing.');
@@ -58,7 +148,7 @@ function AddAnnexPage() {
 
     const features = featuresInput.split(',').map((item) => item.trim()).filter(Boolean);
     const rulesAndConditions = rulesInput.split(',').map((item) => item.trim()).filter(Boolean);
-    
+
     const newAnnexData = {
       ownerId: user?.id,
       title,
@@ -69,10 +159,7 @@ function AddAnnexPage() {
       rulesAndConditions,
       selectedAddress,
       tags: ['New'],
-      location: {
-        type: 'Point',
-        coordinates: [pinLocation.lng, pinLocation.lat]
-      }
+      location: { type: 'Point', coordinates: [pinLocation.lng, pinLocation.lat] },
     };
 
     const formData = new FormData();
@@ -89,131 +176,172 @@ function AddAnnexPage() {
     imageFiles.forEach((file) => formData.append('images', file));
 
     try {
+      setSubmitting(true);
       const response = await axios.post('http://localhost:5000/api/annexes', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-      
+
       if (response.data.success) {
         setMessage('success:Annex successfully added to the system!');
-        // Clear the form
+        setSubmitted(true);
         setTitle(''); setPrice(''); setDescription(''); setPreferredGender('Any');
         setFeaturesInput(''); setRulesInput(''); setImageFiles([]);
         setImagePreviews([]); setSelectedAddress('');
       }
     } catch (error) {
-      console.error("Error adding annex:", error);
+      console.error('Error adding annex:', error);
       setMessage('error:Failed to add annex. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  // Step completion checks
+  const step1Done = !!(title.trim() && price);
+  const step2Done = !!(description.trim() && preferredGender);
+  const step3Done = !!(selectedAddress || imageFiles.length > 0);
+
   return (
-    <>
-      {/* Custom Scrollbar Styles for Professional Look */}
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
-      `}</style>
+    <div className="min-h-screen bg-[#060F1E] px-4 py-8 md:py-12 flex items-start justify-center text-gray-100">
+      <div className="w-full max-w-7xl space-y-6">
 
-      <div className="flex h-screen font-sans bg-[#0B1120] text-gray-200 overflow-hidden relative">
-        
-        {/* Background glow effects to match homepage */}
-        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] pointer-events-none"></div>
-
-        {/* LEFT SIDE: Form Panel */}
-        <div className="w-[480px] p-8 bg-[#0B1120]/95 backdrop-blur-xl border-r border-gray-800/60 overflow-y-auto shadow-[10px_0_30px_rgba(0,0,0,0.8)] z-10 custom-scrollbar flex flex-col relative">
-          
-          <div className="mb-8">
-            <h2 className="text-3xl font-extrabold tracking-tight text-white mb-2">
-              List Your <span className="text-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.6)]">Annex</span>
-            </h2>
-            <p className="text-sm text-gray-400">Fill in the details and pinpoint the location on the map to attract students.</p>
+        {/* ── Page header ── */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-widest text-[#6b84c9] mb-1">AnnexRent</p>
+            <h1 className="text-2xl md:text-3xl font-semibold text-white">List Your Annex</h1>
+            <p className="text-sm text-gray-400 mt-1">Fill in the details and pin the location to attract students.</p>
           </div>
+          {/* Progress steps */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <StepBadge number="1" label="Basic info" active={!step1Done} done={step1Done} />
+            <div className="h-px w-6 bg-[#232E45]" />
+            <StepBadge number="2" label="Details" active={step1Done && !step2Done} done={step2Done} />
+            <div className="h-px w-6 bg-[#232E45]" />
+            <StepBadge number="3" label="Location & Photos" active={step1Done && step2Done && !step3Done} done={step3Done} />
+            <div className="h-px w-6 bg-[#232E45]" />
+            <StepBadge number="4" label="Publish" active={step1Done && step2Done && step3Done} done={submitted} />
+          </div>
+        </div>
 
-          {message && (
-            <div className={`p-4 mb-6 rounded-lg text-sm font-medium flex items-center gap-3 backdrop-blur-md animate-pulse border ${
-              message.startsWith('success') 
-                ? 'bg-green-500/10 text-green-400 border-green-500/20' 
-                : 'bg-red-500/10 text-red-400 border-red-500/20'
-            }`}>
-              <span className="text-lg">{message.startsWith('success') ? '✅' : '❌'}</span>
-              {message.split(':')[1]}
-            </div>
-          )}
+        {/* ── Two-column layout ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 items-start">
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-            
-            {/* Input Group */}
-            <div className="space-y-5">
-              <div>
-                <label className="block text-xs font-semibold tracking-wider text-gray-400 uppercase mb-1.5">Title / Name of Annex</label>
-                <input 
-                  type="text" required value={title} onChange={(e) => setTitle(e.target.value)} 
-                  className="w-full p-3.5 bg-gray-900/50 border border-gray-700 rounded-xl outline-none text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 placeholder-gray-600 shadow-inner"
-                  placeholder="e.g., Luxury AC Room in Malabe"
-                />
-              </div>
+          {/* ── LEFT column ── */}
+          <div className="space-y-5">
 
-              <div>
-                <label className="block text-xs font-semibold tracking-wider text-gray-400 uppercase mb-1.5">Monthly Price (LKR)</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">Rs.</span>
-                  <input 
-                    type="number" required value={price} onChange={(e) => setPrice(e.target.value)} 
-                    className="w-full p-3.5 pl-12 bg-gray-900/50 border border-gray-700 rounded-xl outline-none text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 placeholder-gray-600 shadow-inner"
-                    placeholder="20,000"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold tracking-wider text-gray-400 uppercase mb-1.5">Description</label>
-                <textarea 
-                  rows="4" required value={description} onChange={(e) => setDescription(e.target.value)} 
-                  className="w-full p-3.5 bg-gray-900/50 border border-gray-700 rounded-xl outline-none text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 placeholder-gray-600 shadow-inner custom-scrollbar"
-                  placeholder="Describe the facilities, nearby landmarks, etc."
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold tracking-wider text-gray-400 uppercase mb-1.5">Features</label>
-                  <textarea
-                    rows="2" value={featuresInput} onChange={(e) => setFeaturesInput(e.target.value)}
-                    className="w-full p-3 bg-gray-900/50 border border-gray-700 rounded-xl outline-none text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 placeholder-gray-600 custom-scrollbar text-sm"
-                    placeholder="WiFi, AC, Attached Bath (comma separated)"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold tracking-wider text-gray-400 uppercase mb-1.5">Rules</label>
-                  <textarea
-                    rows="2" value={rulesInput} onChange={(e) => setRulesInput(e.target.value)}
-                    className="w-full p-3 bg-gray-900/50 border border-gray-700 rounded-xl outline-none text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 placeholder-gray-600 custom-scrollbar text-sm"
-                    placeholder="No smoking, 10PM curfew (comma separated)"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold tracking-wider text-gray-400 uppercase mb-1.5">Allowed Gender</label>
-                <select 
-                  value={preferredGender} onChange={(e) => setPreferredGender(e.target.value)} 
-                  className="w-full p-3.5 bg-gray-900/50 border border-gray-700 rounded-xl outline-none text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 appearance-none cursor-pointer"
-                >
-                  <option value="Any" className="bg-gray-800 text-white">Any (Boys & Girls)</option>
-                  <option value="Male" className="bg-gray-800 text-white">Male Only</option>
-                  <option value="Female" className="bg-gray-800 text-white">Female Only</option>
-                </select>
-              </div>
-
-              {/* Advanced File Upload Area */}
-              <div>
-                <label className="block text-xs font-semibold tracking-wider text-gray-400 uppercase mb-1.5">Annex Photos (Max 5)</label>
-                <div className="relative group w-full h-32 flex flex-col items-center justify-center border-2 border-dashed border-gray-700 rounded-xl bg-gray-900/30 hover:bg-gray-800/50 hover:border-blue-500 transition-all duration-300 cursor-pointer overflow-hidden">
+            {/* Basic Info */}
+            <SectionCard
+              accent
+              title="Basic Information"
+              subtitle="The headline details students see first on your listing."
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                </svg>
+              }
+            >
+              <div className="space-y-4">
+                <Field label="Title / Name of Annex" required>
                   <input
-                    type="file" accept="image/*" multiple
+                    type="text"
+                    required
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className={inputCls}
+                    placeholder="e.g. Luxury AC Room in Malabe"
+                  />
+                </Field>
+                <Field label="Monthly Price (LKR)" required>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium pointer-events-none">Rs.</span>
+                    <input
+                      type="number"
+                      required
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      className={`${inputCls} pl-10`}
+                      placeholder="20,000"
+                    />
+                  </div>
+                </Field>
+              </div>
+            </SectionCard>
+
+            {/* Details */}
+            <SectionCard
+              title="Listing Details"
+              subtitle="Help students understand what makes your annex great."
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                </svg>
+              }
+            >
+              <div className="space-y-4">
+                <Field label="Description" required>
+                  <textarea
+                    rows={4}
+                    required
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className={`${inputCls} resize-none`}
+                    placeholder="Describe the facilities, nearby landmarks, transport links, etc."
+                  />
+                </Field>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field label="Features" hint="Comma-separated — e.g. WiFi, AC, Attached Bath">
+                    <textarea
+                      rows={3}
+                      value={featuresInput}
+                      onChange={(e) => setFeaturesInput(e.target.value)}
+                      className={`${inputCls} resize-none`}
+                      placeholder="WiFi, AC, Attached Bath"
+                    />
+                  </Field>
+                  <Field label="Rules & Conditions" hint="Comma-separated — e.g. No smoking, 10PM curfew">
+                    <textarea
+                      rows={3}
+                      value={rulesInput}
+                      onChange={(e) => setRulesInput(e.target.value)}
+                      className={`${inputCls} resize-none`}
+                      placeholder="No smoking, 10PM curfew"
+                    />
+                  </Field>
+                </div>
+
+                <Field label="Allowed Gender">
+                  <select
+                    value={preferredGender}
+                    onChange={(e) => setPreferredGender(e.target.value)}
+                    className={`${inputCls} appearance-none cursor-pointer`}
+                  >
+                    <option value="Any">Any (Boys & Girls)</option>
+                    <option value="Male">Male Only</option>
+                    <option value="Female">Female Only</option>
+                  </select>
+                </Field>
+              </div>
+            </SectionCard>
+
+            {/* Photos */}
+            <SectionCard
+              title="Annex Photos"
+              subtitle="Upload up to 5 photos. Clear, bright images attract more students."
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                </svg>
+              }
+            >
+              <div className="space-y-4">
+                {/* Upload area */}
+                <div className="relative group w-full h-32 flex flex-col items-center justify-center border-2 border-dashed border-[#232E45] rounded-xl bg-[#060F1E] hover:bg-[#0d1a2e] hover:border-[#3b4f86] transition-all duration-300 cursor-pointer overflow-hidden">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
                     onChange={(e) => {
                       const files = Array.from(e.target.files || []).slice(0, 5);
                       setImageFiles(files);
@@ -221,78 +349,209 @@ function AddAnnexPage() {
                     }}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                   />
-                  <svg className="w-8 h-8 text-gray-500 group-hover:text-blue-400 transition-colors mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                  <span className="text-sm text-gray-500 group-hover:text-blue-300 transition-colors font-medium">Click or drag images here</span>
+                  <svg className="w-7 h-7 text-gray-600 group-hover:text-[#6b84c9] transition-colors mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  <span className="text-sm text-gray-500 group-hover:text-gray-300 transition-colors font-medium">
+                    Click or drag images here
+                  </span>
+                  <span className="text-[11px] text-gray-600 mt-0.5">Max 5 images</span>
                 </div>
-                
+
+                {/* Previews */}
                 {imagePreviews.length > 0 && (
-                  <div className="mt-4 grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                     {imagePreviews.map((preview, index) => (
-                      <div key={preview} className="relative group overflow-hidden rounded-lg aspect-square border border-gray-700">
-                        <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                        <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
+                      <div key={preview} className="relative group overflow-hidden rounded-xl aspect-square border border-[#232E45]">
+                        <img
+                          src={preview}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors rounded-xl" />
+                        <span className="absolute bottom-1 right-1 text-[10px] bg-black/60 text-white rounded px-1">{index + 1}</span>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
+            </SectionCard>
 
-              {/* Dynamic Location Card */}
-              <div className="bg-[#121b2b] p-4 rounded-xl border border-blue-900/50 relative overflow-hidden group">
-                <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 shadow-[0_0_10px_#3b82f6]"></div>
-                <strong className="block text-xs uppercase tracking-wider text-blue-400 mb-2">Location Coordinates</strong>
-                <div className="flex justify-between text-sm text-gray-300 mb-1">
-                  <span>Latitude: <span className="text-white font-mono">{pinLocation.lat.toFixed(4)}</span></span>
-                  <span>Longitude: <span className="text-white font-mono">{pinLocation.lng.toFixed(4)}</span></span>
+            {/* Map */}
+            <SectionCard
+              title="Pin Location on Map"
+              subtitle="Click anywhere on the map to set your annex's exact location."
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                </svg>
+              }
+            >
+              <div className="space-y-4">
+                {/* Coordinates pill */}
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#1a2540] border border-[#3b4f86] px-3 py-1 text-xs font-medium text-[#a5b8e8]">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                    </svg>
+                    {pinLocation.lat.toFixed(4)}, {pinLocation.lng.toFixed(4)}
+                  </span>
+                  {selectedAddress && (
+                    <span className="text-[11px] text-gray-400 truncate max-w-xs">{selectedAddress}</span>
+                  )}
                 </div>
-                {selectedAddress && (
-                  <div className="mt-3 pt-3 border-t border-gray-800">
-                    <span className="block text-xs text-gray-500 mb-1">Resolved Address</span>
-                    <p className="text-sm text-gray-200 truncate" title={selectedAddress}>{selectedAddress}</p>
+
+                {/* Map container */}
+                <div className="relative rounded-xl overflow-hidden border border-[#232E45]" style={{ height: 320 }}>
+                  <Map
+                    mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
+                    initialViewState={{
+                      longitude: pinLocation.lng,
+                      latitude: pinLocation.lat,
+                      zoom: 14,
+                    }}
+                    mapStyle="mapbox://styles/mapbox/dark-v11"
+                    onClick={handleMapClick}
+                    cursor="crosshair"
+                    style={{ width: '100%', height: '100%' }}
+                  >
+                    <Marker longitude={pinLocation.lng} latitude={pinLocation.lat}>
+                      <div className="relative flex items-center justify-center w-8 h-8 cursor-pointer">
+                        <div className="absolute w-full h-full bg-blue-500 rounded-full animate-ping opacity-60" />
+                        <div className="relative w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-[0_0_15px_rgba(59,130,246,1)]" />
+                      </div>
+                    </Marker>
+                  </Map>
+                  <div className="absolute bottom-3 left-3 rounded-lg bg-[#060F1E]/80 backdrop-blur-sm border border-[#232E45] px-3 py-1.5 text-[11px] text-gray-400 pointer-events-none">
+                    Click to reposition the pin
                   </div>
+                </div>
+              </div>
+            </SectionCard>
+
+            {/* Status message */}
+            {message && (
+              <div
+                className={`flex items-start gap-3 rounded-xl border px-4 py-3.5 text-sm ${
+                  message.startsWith('success')
+                    ? 'bg-green-500/10 border-green-500/30 text-green-300'
+                    : 'bg-red-500/10 border-red-500/30 text-red-300'
+                }`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="mt-0.5 h-4 w-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                  {message.startsWith('success') ? (
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  ) : (
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  )}
+                </svg>
+                {message.split(':')[1]}
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex flex-col sm:flex-row justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => window.history.back()}
+                className="inline-flex items-center justify-center rounded-xl border border-[#232E45] bg-transparent px-5 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:bg-[#232E45]/40 hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#3b4f86] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#4c62a3] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? (
+                  <>
+                    <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                    Publishing…
+                  </>
+                ) : (
+                  <>
+                    Post Annex Listing
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                    </svg>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* ── RIGHT column — listing summary ── */}
+          <aside className="space-y-4 sticky top-6">
+
+            {/* Preview card */}
+            <div className="overflow-hidden rounded-2xl border border-[#232E45] bg-[#0B1628]">
+              {imagePreviews.length > 0 ? (
+                <div className="aspect-[16/9] w-full overflow-hidden">
+                  <img
+                    src={imagePreviews[0]}
+                    alt="Listing preview"
+                    className="h-full w-full object-cover transition-transform hover:scale-105 duration-300"
+                  />
+                </div>
+              ) : (
+                <div className="aspect-[16/9] w-full bg-[#0d1a2e] flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-[#232E45]" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              )}
+              <div className="p-5 space-y-1">
+                <h2 className="text-sm font-semibold text-white leading-tight">
+                  {title || <span className="text-gray-600">Listing title will appear here</span>}
+                </h2>
+                <p className="flex items-center gap-1.5 text-xs text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-[#6b84c9]" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                  </svg>
+                  {selectedAddress || 'AnnexRent · Location not yet set'}
+                </p>
+                {price && (
+                  <p className="text-sm font-semibold text-[#6b84c9] pt-1">
+                    Rs. {Number(price).toLocaleString()} <span className="text-xs font-normal text-gray-500">/ month</span>
+                  </p>
                 )}
               </div>
-
             </div>
 
-            <button 
-              type="submit" 
-              className="w-full py-4 mt-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-lg tracking-wide shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_25px_rgba(59,130,246,0.5)] transform hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-2"
-            >
-              Post Annex Listing
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-            </button>
-          </form>
-        </div>
+            {/* Listing summary */}
+            <div className="rounded-2xl border border-[#232E45] bg-[#0B1628] p-5 space-y-4">
+              <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-400">Listing Summary</h3>
 
-        {/* RIGHT SIDE: Interactive Dark Map */}
-        <div className="flex-1 relative bg-black">
-          <Map
-            mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
-            initialViewState={{
-              longitude: pinLocation.lng,
-              latitude: pinLocation.lat,
-              zoom: 14
-            }}
-            // Changed map style to dark-v11 to match the aesthetic perfectly!
-            mapStyle="mapbox://styles/mapbox/dark-v11"
-            onClick={handleMapClick} 
-            cursor="crosshair"
-          >
-            <Marker 
-              longitude={pinLocation.lng} 
-              latitude={pinLocation.lat} 
-            >
-              {/* Custom Neon Marker */}
-              <div className="relative flex items-center justify-center w-8 h-8 cursor-pointer">
-                <div className="absolute w-full h-full bg-blue-500 rounded-full animate-ping opacity-60"></div>
-                <div className="relative w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-[0_0_15px_rgba(59,130,246,1)]"></div>
+              <div className="space-y-2.5">
+                <SummaryRow label="Price" value={price ? `Rs. ${Number(price).toLocaleString()} / mo` : null} highlight={!!price} />
+                <SummaryRow label="Gender" value={preferredGender} highlight={!!preferredGender} />
+                <SummaryRow label="Features" value={featuresInput ? `${featuresInput.split(',').filter(Boolean).length} listed` : null} highlight={!!featuresInput} />
+                <SummaryRow label="Photos" value={imageFiles.length > 0 ? `${imageFiles.length} uploaded` : null} highlight={imageFiles.length > 0} />
+                <SummaryRow label="Location" value={selectedAddress ? 'Pinned ✓' : null} highlight={!!selectedAddress} />
               </div>
-            </Marker>
-          </Map>
+
+              {/* Checklist */}
+              <div className="space-y-2 border-t border-[#232E45] pt-4">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-500 mb-2">Requirements</p>
+                <CheckItem done={!!title.trim()} label="Listing title entered" />
+                <CheckItem done={!!price} label="Price set" />
+                <CheckItem done={!!description.trim()} label="Description added" />
+                <CheckItem done={imageFiles.length > 0} label="At least one photo uploaded" />
+                <CheckItem done={!!selectedAddress} label="Location pinned on map" />
+              </div>
+
+              <p className="text-[11px] text-gray-500 leading-relaxed border-t border-[#232E45] pt-4">
+                Your listing will be <span className="text-gray-300 font-medium">reviewed</span> and made visible to students searching near your area.
+              </p>
+            </div>
+          </aside>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
