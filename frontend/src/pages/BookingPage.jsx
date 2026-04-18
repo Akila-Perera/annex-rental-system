@@ -138,7 +138,11 @@ export default function BookingPage() {
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState({});
   const [statusMessage, setStatusMessage] = useState('');
+  const [statusType, setStatusType] = useState('error');
   const [submitting, setSubmitting] = useState(false);
+  const [inquirySending, setInquirySending] = useState(false);
+  const [showInquiryModal, setShowInquiryModal] = useState(false);
+  const [inquiryMessage, setInquiryMessage] = useState('');
   const [requestSubmitted, setRequestSubmitted] = useState(false);
 
   const [currentMonth, setCurrentMonth] = useState(() => {
@@ -255,6 +259,7 @@ export default function BookingPage() {
   const handleConfirm = async (e) => {
     e.preventDefault();
     setStatusMessage('');
+    setStatusType('error');
     if (!validateForm()) return;
     if (!room.annexId) {
       setStatusMessage('Unable to send booking request: missing annex information.');
@@ -265,16 +270,71 @@ export default function BookingPage() {
       const payload = { propertyId: room.annexId, checkInDate: moveInDate, checkOutDate: moveOutDate, notes };
       const response = await api.post('/bookings', payload);
       if (response.data?.success) {
+        setStatusType('success');
         setStatusMessage('Booking request sent! The owner will review and respond shortly. Check your profile for status updates.');
         setRequestSubmitted(true);
         setFullName(''); setEmail(''); setPhone(''); setMoveInDate(''); setMoveOutDate(''); setNotes(''); setErrors({});
       } else {
+        setStatusType('error');
+        setRequestSubmitted(false);
         setStatusMessage(response.data?.message || 'Failed to send booking request.');
       }
     } catch (error) {
+      setStatusType('error');
+      setRequestSubmitted(false);
       setStatusMessage(error.response?.data?.message || 'Server error while sending booking request.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleOpenInquiryModal = () => {
+    setStatusMessage('');
+    setShowInquiryModal(true);
+  };
+
+  const handleCloseInquiryModal = () => {
+    if (inquirySending) return;
+    setShowInquiryModal(false);
+    setInquiryMessage('');
+  };
+
+  const handleSendInquiry = async () => {
+    setStatusMessage('');
+    setStatusType('error');
+
+    if (!room.annexId) {
+      setStatusMessage('Unable to send inquiry: missing annex information.');
+      return;
+    }
+
+    if (!inquiryMessage.trim()) {
+      setStatusMessage('Please enter an inquiry message first.');
+      return;
+    }
+
+    try {
+      setInquirySending(true);
+
+      const response = await api.post('/inquiries', {
+        annexId: room.annexId,
+        message: inquiryMessage.trim(),
+      });
+
+      if (response.data?.success) {
+        setStatusType('success');
+        setStatusMessage('Inquiry sent to the property owner. It is now visible in the owner chat section.');
+        setInquiryMessage('');
+        setShowInquiryModal(false);
+      } else {
+        setStatusType('error');
+        setStatusMessage(response.data?.message || 'Failed to send inquiry.');
+      }
+    } catch (error) {
+      setStatusType('error');
+      setStatusMessage(error.response?.data?.message || 'Server error while sending inquiry.');
+    } finally {
+      setInquirySending(false);
     }
   };
 
@@ -445,7 +505,7 @@ export default function BookingPage() {
                 </Field>
 
                 {/* Notes */}
-                <Field label="Notes for host" hint="Optional — mention any preferences, allergies, or requirements.">
+                <Field label="Notes for host" hint="Optional - mention any preferences, allergies, or requirements.">
                   <textarea
                     rows={3}
                     value={notes}
@@ -581,14 +641,14 @@ export default function BookingPage() {
             {statusMessage && (
               <div
                 className={`flex items-start gap-3 rounded-xl border px-4 py-3.5 text-sm ${
-                  requestSubmitted
+                  statusType === 'success'
                     ? 'bg-green-500/10 border-green-500/30 text-green-300'
                     : 'bg-red-500/10 border-red-500/30 text-red-300'
                 }`}
                 style={FONT_BODY}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="mt-0.5 h-4 w-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                  {requestSubmitted
+                  {statusType === 'success'
                     ? <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     : <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   }
@@ -606,6 +666,15 @@ export default function BookingPage() {
                 style={FONT_BODY}
               >
                 Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenInquiryModal}
+                disabled={inquirySending}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#3b4f86] bg-transparent px-6 py-2.5 text-sm font-semibold text-[#b6c8f4] transition-colors hover:bg-[#1a2540] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                style={FONT_DISPLAY}
+              >
+                Send Inquiry
               </button>
               <button
                 type="button"
@@ -688,6 +757,58 @@ export default function BookingPage() {
           </aside>
         </div>
       </div>
+
+      {showInquiryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <button
+            type="button"
+            aria-label="Close inquiry dialog"
+            className="absolute inset-0 bg-black/60"
+            onClick={handleCloseInquiryModal}
+          />
+          <div className="relative z-10 w-full max-w-lg rounded-2xl border border-[#232E45] bg-[#0B1628] p-6 shadow-2xl">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-white" style={FONT_DISPLAY}>Send Inquiry to Owner</h3>
+              <p className="mt-1 text-xs text-gray-400" style={FONT_BODY}>
+                Ask any question about this annex. Your message will appear in the owner's chat section.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-gray-300" style={FONT_BODY}>Inquiry Message</label>
+              <textarea
+                rows={5}
+                value={inquiryMessage}
+                onChange={(e) => setInquiryMessage(e.target.value)}
+                className={`${inputCls} resize-none`}
+                placeholder="e.g. Is water and electricity included in the monthly rent?"
+                style={FONT_BODY}
+              />
+            </div>
+
+            <div className="mt-5 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleCloseInquiryModal}
+                disabled={inquirySending}
+                className="inline-flex items-center justify-center rounded-xl border border-[#232E45] bg-transparent px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-[#232E45]/40 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                style={FONT_BODY}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSendInquiry}
+                disabled={inquirySending}
+                className="inline-flex items-center justify-center rounded-xl bg-[#3b4f86] px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#4c62a3] disabled:opacity-50 disabled:cursor-not-allowed"
+                style={FONT_DISPLAY}
+              >
+                {inquirySending ? 'Sending Inquiry…' : 'Send Inquiry'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
