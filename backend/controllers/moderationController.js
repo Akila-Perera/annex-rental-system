@@ -257,7 +257,7 @@ export const bulkModerate = async (req, res) => {
   }
 };
 
-// @desc    Get moderation statistics
+// @desc    Get moderation statistics - UPDATED to include deleted count
 // @route   GET /api/admin/stats
 // @access  Private/Admin
 export const getModerationStats = async (req, res) => {
@@ -268,6 +268,7 @@ export const getModerationStats = async (req, res) => {
       approvedReviews: await Review.countDocuments({ status: 'approved' }),
       rejectedReviews: await Review.countDocuments({ status: 'rejected' }),
       flaggedReviews: await Review.countDocuments({ status: 'flagged' }),
+      deletedReviews: await Review.countDocuments({ status: 'deleted' }),  // ✅ ADDED
       
       todayReviews: await Review.countDocuments({
         createdAt: { $gte: new Date().setHours(0,0,0,0) }
@@ -281,6 +282,47 @@ export const getModerationStats = async (req, res) => {
 
   } catch (error) {
     console.error('Stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// @desc    Delete a review (SOFT DELETE - change status to 'deleted')
+// @route   DELETE /api/admin/reviews/:reviewId
+// @access  Private/Admin
+export const deleteReview = async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    
+    const review = await Review.findById(reviewId);
+    
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: 'Review not found'
+      });
+    }
+    
+    // SOFT DELETE - change status to 'deleted' instead of actually deleting
+    review.status = 'deleted';
+    await review.save();
+    
+    // Recalculate quality score for the property after deletion
+    try {
+      await calculatePropertyScore({ params: { propertyId: review.property } }, { json: () => {} });
+      console.log('Quality score updated after deletion for property:', review.property);
+    } catch (scoreError) {
+      console.error('Error updating quality score:', scoreError);
+    }
+    
+    res.json({
+      success: true,
+      message: 'Review moved to deleted'
+    });
+  } catch (error) {
+    console.error('Error in deleteReview:', error);
     res.status(500).json({
       success: false,
       message: error.message
