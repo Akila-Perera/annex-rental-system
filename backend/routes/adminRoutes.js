@@ -5,7 +5,8 @@ const {
   rejectReview,
   flagReview,
   bulkModerate,
-  getModerationStats
+  getModerationStats,
+  deleteReview  // ← ADD THIS
 } = require('../controllers/moderationController.js');
 // const { protect, admin } = require('../middleware/authMiddleware.js'); // ← COMMENTED OUT
 
@@ -20,6 +21,7 @@ router.get('/stats', getModerationStats);
 router.put('/reviews/:reviewId/approve', approveReview);
 router.put('/reviews/:reviewId/reject', rejectReview);
 router.put('/reviews/:reviewId/flag', flagReview);
+router.delete('/reviews/:reviewId', deleteReview);  // ← ADD THIS
 router.post('/reviews/bulk', bulkModerate);
 
 module.exports = router;

@@ -248,8 +248,9 @@ function SupportDetails() {
               </span>
             )}
           </button>
+          {/* UPDATED: Reviews tab now navigates to your admin dashboard */}
           <button
-            onClick={() => setActiveTab('reviews')}
+            onClick={() => navigate('/admin')}
             className={`px-8 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'reviews' ? 'bg-purple-600 shadow-lg shadow-purple-600/30' : 'text-[#8a96b0] hover:bg-white/5'}`}
           >
             ⭐ Reviews
@@ -393,90 +394,10 @@ function SupportDetails() {
         )}
 
         {/* ══════════════════════════════════════
-            REVIEWS TAB
+            REVIEWS TAB CONTENT - REMOVED (redirects to /admin)
         ══════════════════════════════════════ */}
-        {activeTab === 'reviews' && (
-          <div>
-            {/* Stats bar */}
-            <div className="grid grid-cols-4 gap-1 bg-[#161b25] border border-white/5 rounded-2xl mb-8 overflow-hidden">
-              <div className="p-4 text-center">
-                <div className="text-xl font-display font-bold text-purple-400">{stats.pendingReviews || 0}</div>
-                <div className="text-[10px] text-[#5a6478] uppercase font-bold">Pending</div>
-              </div>
-              <div className="p-4 text-center border-l border-white/5">
-                <div className="text-xl font-display font-bold text-green-400">{stats.approvedReviews || 0}</div>
-                <div className="text-[10px] text-[#5a6478] uppercase font-bold">Approved</div>
-              </div>
-              <div className="p-4 text-center border-l border-white/5">
-                <div className="text-xl font-display font-bold text-red-400">{stats.rejectedReviews || 0}</div>
-                <div className="text-[10px] text-[#5a6478] uppercase font-bold">Rejected</div>
-              </div>
-              <div className="p-4 text-center border-l border-white/5">
-                <div className="text-xl font-display font-bold text-orange-400">{stats.flaggedReviews || 0}</div>
-                <div className="text-[10px] text-[#5a6478] uppercase font-bold">Flagged</div>
-              </div>
-            </div>
+        {/* The Reviews tab now redirects to /admin, so no content needed here */}
 
-            {/* Sub-tabs */}
-            <div className="flex gap-2 mb-8">
-              {['pending', 'approved', 'rejected', 'flagged'].map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setReviewSubTab(s)}
-                  className={`px-5 py-2 rounded-full text-xs font-bold capitalize transition-all border ${
-                    reviewSubTab === s ? 'bg-purple-600 border-purple-600' : 'bg-white/5 border-white/10 text-[#8a96b0]'
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-
-            {reviewLoading ? (
-              <div className="text-center py-20">
-                <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto" />
-              </div>
-            ) : reviews[reviewSubTab]?.length === 0 ? (
-              <div className="text-center py-20 bg-white/2 rounded-3xl border border-dashed border-white/10">
-                <p className="text-[#8a96b0]">No {reviewSubTab} reviews to show.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {reviews[reviewSubTab].map((rev) => (
-                  <div
-                    key={rev._id}
-                    className="bg-[#1a2030] border border-white/5 p-6 rounded-2xl flex flex-col md:flex-row justify-between gap-6"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="flex text-yellow-400 text-xs">{'★'.repeat(rev.ratings?.overall || 5)}</div>
-                        <span className="text-[10px] font-bold text-[#5a6478] uppercase tracking-widest">{formatDate(rev.createdAt)}</span>
-                      </div>
-                      <h4 className="font-bold text-lg mb-1">{rev.property?.title || 'Review Title'}</h4>
-                      <p className="text-[#8a96b0] text-sm italic mb-4">"{rev.comment}"</p>
-                      <div className="flex gap-4">
-                        {rev.pros?.length > 0 && (
-                          <p className="text-[11px] text-green-400"><span className="font-bold">PROS:</span> {rev.pros.join(', ')}</p>
-                        )}
-                        {rev.cons?.length > 0 && (
-                          <p className="text-[11px] text-red-400"><span className="font-bold">CONS:</span> {rev.cons.join(', ')}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {reviewSubTab === 'pending' && (
-                      <div className="flex md:flex-col gap-2 justify-center">
-                        <button onClick={() => handleReviewAction(rev._id, 'approve')} className="px-4 py-2 bg-green-500/20 text-green-400 border border-green-500/20 rounded-lg text-xs font-bold hover:bg-green-500 hover:text-white transition-all">Approve</button>
-                        <button onClick={() => handleReviewAction(rev._id, 'reject')} className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-xs font-bold hover:bg-red-500 hover:text-white transition-all">Reject</button>
-                        <button onClick={() => handleReviewAction(rev._id, 'flag')} className="px-4 py-2 bg-orange-500/20 text-orange-400 border border-orange-500/20 rounded-lg text-xs font-bold hover:bg-orange-500 hover:text-white transition-all">Flag</button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* ══════════════════════════════════════

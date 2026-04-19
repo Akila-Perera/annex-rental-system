@@ -15,17 +15,17 @@ const setServers = require('dns').setServers;
 const reviewRoutesModule  = require('./routes/reviewRoutes');
 const adminRoutesModule   = require('./routes/adminRoutes');
 const qualityRoutesModule = require('./routes/qualityRoutes');
+const aiRoutesModule      = require('./routes/aiRoutes'); // ✅ ADDED
 
 const reviewRoutes   = reviewRoutesModule.default   || reviewRoutesModule;
 const adminRoutes    = adminRoutesModule.default    || adminRoutesModule;
 const qualityRoutes  = qualityRoutesModule.default  || qualityRoutesModule;
 const bookingRoutes  = bookingRoutesModule.default  || bookingRoutesModule;
+const aiRoutes       = aiRoutesModule.default       || aiRoutesModule; // ✅ ADDED
 
 setServers(["1.1.1.1", "8.8.8.8"]);
 
 connectDB();
-
-
 
 const app = express();
 
@@ -54,6 +54,7 @@ app.use('/api/inquiries', inquiryRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/quality', qualityRoutes);
+app.use('/api/ai', aiRoutes); // ✅ ADDED
 
 // ── 4. Health check ─────────────────────────────────────
 app.get('/', (req, res) => {
