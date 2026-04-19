@@ -1,8 +1,22 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
+import { UNIVERSITIES } from '../constants/universities';
 
 const API_BASE = 'http://localhost:5000';
+const CAMPUS_RADIUS_KM = 15;
+const AMENITY_OPTIONS = ['WiFi', 'AC', 'Parking', 'Security'];
+
+function calcKm(sLat, sLng, eLat, eLng) {
+  const toRad = (v) => (v * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(eLat - sLat);
+  const dLng = toRad(eLng - sLng);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(sLat)) * Math.cos(toRad(eLat)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=1200&q=80';
 
@@ -386,6 +400,154 @@ const styles = `
     background: linear-gradient(90deg, transparent, rgba(45,126,247,0.2), transparent);
     margin: 2rem 0;
   }
+
+  .booking-layout {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+    position: relative;
+  }
+  @media (max-width: 960px) {
+    .booking-layout { flex-direction: column; }
+    .filter-sidebar { width: 100% !important; position: relative !important; top: 0 !important; }
+  }
+  .filter-sidebar {
+    width: 280px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 1.25rem;
+    align-self: flex-start;
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 18px;
+    padding: 1.25rem 1.2rem;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.45), 0 0 0 1px rgba(45,126,247,0.06);
+  }
+  .filter-sidebar h3 {
+    margin: 0 0 1rem;
+    font-size: 0.82rem;
+    font-weight: 800;
+    font-family: 'Syne', sans-serif;
+    color: #e8eeff;
+    letter-spacing: 0.02em;
+  }
+  .filter-block { margin-bottom: 1.15rem; }
+  .filter-block-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: rgba(45,126,247,0.9);
+    margin: 0 0 0.5rem;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .filter-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+  .filter-inp {
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(45,126,247,0.25);
+    border-radius: 10px;
+    padding: 0.45rem 0.55rem;
+    color: #e8eeff;
+    font-size: 0.8rem;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .filter-inp::placeholder { color: rgba(255,255,255,0.28); }
+  .filter-inp:focus {
+    border-color: rgba(45,126,247,0.55);
+    box-shadow: 0 0 0 2px rgba(45,126,247,0.12);
+  }
+  .filter-select {
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: rgba(255, 255, 255, 0.06);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 20 20' fill='%237ab8fc'%3E%3Cpath d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.55rem center;
+    padding-right: 1.75rem;
+  }
+
+  /* Dark-theme native selects: readable options + matching trigger (AnnexBooking filters) */
+  .annex-wrap select,
+  .annex-wrap select.filter-inp {
+    background-color: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(45, 126, 247, 0.28);
+    color: #e8eeff;
+    color-scheme: dark;
+  }
+  .annex-wrap select:focus,
+  .annex-wrap select.filter-inp:focus {
+    border-color: rgba(45, 126, 247, 0.55);
+    box-shadow: 0 0 0 2px rgba(45, 126, 247, 0.12);
+  }
+  .annex-wrap select option {
+    background-color: #050c1a;
+    color: #e8eeff;
+  }
+  .annex-wrap select option:hover,
+  .annex-wrap select option:focus,
+  .annex-wrap select option:checked {
+    background-color: #2d7ef7;
+    color: #e8eeff;
+  }
+  .filter-check {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.4rem;
+    cursor: pointer;
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.68);
+    font-family: 'DM Sans', sans-serif;
+  }
+  .filter-check:last-child { margin-bottom: 0; }
+  .filter-check input {
+    width: 15px;
+    height: 15px;
+    accent-color: #2d7ef7;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .filter-reset {
+    width: 100%;
+    margin-top: 0.35rem;
+    padding: 0.52rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.65);
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .filter-reset:hover {
+    border-color: rgba(45,126,247,0.4);
+    color: #93c3fd;
+    background: rgba(45,126,247,0.1);
+  }
+  .filter-hint {
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.32);
+    margin: 0.35rem 0 0;
+    line-height: 1.4;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .booking-main {
+    flex: 1;
+    min-width: 0;
+  }
 `;
 
 const DEFAULT_AMENITIES = ['WiFi', 'AC', 'Parking', 'Security'];
@@ -416,6 +578,13 @@ function AnnexBookingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [filterPriceMin, setFilterPriceMin] = useState('');
+  const [filterPriceMax, setFilterPriceMax] = useState('');
+  const [filterGender, setFilterGender] = useState('Any');
+  const [amenityFilters, setAmenityFilters] = useState(() =>
+    Object.fromEntries(AMENITY_OPTIONS.map((k) => [k, false]))
+  );
+  const [filterUniversity, setFilterUniversity] = useState(null);
 
   useEffect(() => {
     const styleEl = document.createElement('style');
@@ -467,15 +636,82 @@ function AnnexBookingPage() {
     });
   };
 
+  const clearFilters = () => {
+    setSearch('');
+    setFilterPriceMin('');
+    setFilterPriceMax('');
+    setFilterGender('Any');
+    setAmenityFilters(Object.fromEntries(AMENITY_OPTIONS.map((k) => [k, false])));
+    setFilterUniversity(null);
+  };
+
+  const hasActiveFilters =
+    !!search.trim() ||
+    filterPriceMin !== '' ||
+    filterPriceMax !== '' ||
+    filterGender !== 'Any' ||
+    AMENITY_OPTIONS.some((k) => amenityFilters[k]) ||
+    filterUniversity != null;
+
   const filtered = useMemo(() => {
+    let list = annexes;
+
     const q = search.trim().toLowerCase();
-    if (!q) return annexes;
-    return annexes.filter(
-      (a) =>
-        (a.title || '').toLowerCase().includes(q) ||
-        (a.selectedAddress || '').toLowerCase().includes(q)
-    );
-  }, [annexes, search]);
+    if (q) {
+      list = list.filter(
+        (a) =>
+          (a.title || '').toLowerCase().includes(q) ||
+          (a.selectedAddress || '').toLowerCase().includes(q)
+      );
+    }
+
+    const pMin = filterPriceMin !== '' ? Number(filterPriceMin) : null;
+    const pMax = filterPriceMax !== '' ? Number(filterPriceMax) : null;
+    if (pMin != null && !Number.isNaN(pMin)) {
+      list = list.filter((a) => Number(a.price || 0) >= pMin);
+    }
+    if (pMax != null && !Number.isNaN(pMax)) {
+      list = list.filter((a) => Number(a.price || 0) <= pMax);
+    }
+
+    if (filterGender === 'Male' || filterGender === 'Female') {
+      list = list.filter((a) => {
+        const g = a.preferredGender || 'Any';
+        return g === 'Any' || g === filterGender;
+      });
+    }
+
+    const requiredAmenities = AMENITY_OPTIONS.filter((k) => amenityFilters[k]);
+    if (requiredAmenities.length > 0) {
+      list = list.filter((a) => {
+        const feats = Array.isArray(a.features) ? a.features.map((f) => String(f).toLowerCase()) : [];
+        return requiredAmenities.every((key) => {
+          const term = key.toLowerCase();
+          return feats.some((f) => f.includes(term));
+        });
+      });
+    }
+
+    if (filterUniversity) {
+      list = list.filter((a) => {
+        const coords = a.location?.coordinates;
+        if (!coords || coords.length < 2) return false;
+        const [lng, lat] = coords;
+        const d = calcKm(filterUniversity.lat, filterUniversity.lng, lat, lng);
+        return d <= CAMPUS_RADIUS_KM;
+      });
+    }
+
+    return list;
+  }, [
+    annexes,
+    search,
+    filterPriceMin,
+    filterPriceMax,
+    filterGender,
+    amenityFilters,
+    filterUniversity,
+  ]);
 
   return (
     <div className="annex-wrap">
@@ -512,71 +748,162 @@ function AnnexBookingPage() {
         {/* ── Stats strip ── */}
         {!loading && !error && (
           <div className="stats-strip">
-            <div className="stat-pill"><strong>{annexes.length}</strong> Listings Available</div>
+            <div className="stat-pill"><strong>{filtered.length}</strong> Match filters</div>
+            <div className="stat-pill"><strong>{annexes.length}</strong> Total listings</div>
             <div className="stat-pill"><strong>24/7</strong> Support</div>
             <div className="stat-pill"><strong>Verified</strong> Properties</div>
-            <div className="stat-pill"><strong>SLIIT</strong> Campus Proximity</div>
           </div>
         )}
 
-        {/* ── Search bar ── */}
-        <div className="search-wrap">
-          <svg className="search-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="9" cy="9" r="6" stroke="white" strokeWidth="1.8"/>
-            <path d="M13.5 13.5L17 17" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-          </svg>
-          <input
-            className="search-input"
-            type="text"
-            placeholder="Search by name or location..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          {search && (
-            <button className="search-clear" onClick={() => setSearch('')} aria-label="Clear search">
-              ✕
-            </button>
-          )}
-        </div>
+        <div className="booking-layout">
+          <aside className="filter-sidebar" aria-label="Filter listings">
+            <h3>Filters</h3>
 
-        <hr className="section-divider" />
+            <div className="filter-block">
+              <p className="filter-block-label">Price range (LKR / mo)</p>
+              <div className="filter-row-2">
+                <input
+                  className="filter-inp"
+                  type="number"
+                  min={0}
+                  placeholder="Min"
+                  value={filterPriceMin}
+                  onChange={(e) => setFilterPriceMin(e.target.value)}
+                />
+                <input
+                  className="filter-inp"
+                  type="number"
+                  min={0}
+                  placeholder="Max"
+                  value={filterPriceMax}
+                  onChange={(e) => setFilterPriceMax(e.target.value)}
+                />
+              </div>
+            </div>
 
-        {loading && <SkeletonGrid />}
-
-        {!loading && error && (
-          <div className="empty-state">
-            <span className="empty-icon">⚠️</span>
-            <p style={{ color: 'rgba(255,100,100,0.7)', fontSize: 14, fontFamily: "'DM Sans', sans-serif" }}>{error}</p>
-          </div>
-        )}
-
-        {!loading && !error && filtered.length === 0 && (
-          <div className="empty-state">
-            <span className="empty-icon">🔍</span>
-            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 14, fontFamily: "'DM Sans', sans-serif" }}>
-              {search ? `No annexes matching "${search}"` : 'No annexes available.'}
-            </p>
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                style={{ marginTop: '0.75rem', background: 'rgba(45,126,247,0.15)', border: '1px solid rgba(45,126,247,0.3)', color: '#5ba4fa', borderRadius: 8, padding: '0.4rem 1rem', fontSize: 13, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+            <div className="filter-block">
+              <p className="filter-block-label">Gender</p>
+              <select
+                className="filter-inp filter-select"
+                value={filterGender}
+                onChange={(e) => setFilterGender(e.target.value)}
               >
-                Clear search
-              </button>
+                <option value="Any">Any</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            </div>
+
+            <div className="filter-block">
+              <p className="filter-block-label">Amenities</p>
+              {AMENITY_OPTIONS.map((key) => (
+                <label key={key} className="filter-check">
+                  <input
+                    type="checkbox"
+                    checked={amenityFilters[key]}
+                    onChange={() =>
+                      setAmenityFilters((prev) => ({ ...prev, [key]: !prev[key] }))
+                    }
+                  />
+                  {key}
+                </label>
+              ))}
+            </div>
+
+            <div className="filter-block">
+              <p className="filter-block-label">Near campus</p>
+              <select
+                className="filter-inp filter-select"
+                value={filterUniversity?.name ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (!v) setFilterUniversity(null);
+                  else setFilterUniversity(UNIVERSITIES.find((u) => u.name === v) ?? null);
+                }}
+              >
+                <option value="">All campuses</option>
+                {UNIVERSITIES.map((u) => (
+                  <option key={u.name} value={u.name}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+              <p className="filter-hint">Within ~{CAMPUS_RADIUS_KM} km of the selected university.</p>
+            </div>
+
+            <button type="button" className="filter-reset" onClick={clearFilters}>
+              Reset all filters
+            </button>
+          </aside>
+
+          <div className="booking-main">
+            {/* ── Search bar ── */}
+            <div className="search-wrap" style={{ maxWidth: '100%' }}>
+              <svg className="search-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="9" cy="9" r="6" stroke="white" strokeWidth="1.8"/>
+                <path d="M13.5 13.5L17 17" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+              <input
+                className="search-input"
+                type="text"
+                placeholder="Search by name or location..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {search && (
+                <button className="search-clear" onClick={() => setSearch('')} aria-label="Clear search">
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <hr className="section-divider" />
+
+            {loading && <SkeletonGrid />}
+
+            {!loading && error && (
+              <div className="empty-state">
+                <span className="empty-icon">⚠️</span>
+                <p style={{ color: 'rgba(255,100,100,0.7)', fontSize: 14, fontFamily: "'DM Sans', sans-serif" }}>{error}</p>
+              </div>
             )}
-          </div>
-        )}
 
-        {!loading && !error && filtered.length > 0 && (
-          <p className="result-label">
-            Showing <span>{filtered.length}</span> {filtered.length === 1 ? 'annex' : 'annexes'}
-            {search && <> matching <span>"{search}"</span></>}
-          </p>
-        )}
+            {!loading && !error && filtered.length === 0 && (
+              <div className="empty-state">
+                <span className="empty-icon">🔍</span>
+                <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 14, fontFamily: "'DM Sans', sans-serif" }}>
+                  {annexes.length === 0
+                    ? 'No annexes available.'
+                    : hasActiveFilters
+                      ? 'No annexes match your filters. Try widening price, campus radius, or amenities.'
+                      : 'No annexes available.'}
+                </p>
+                {hasActiveFilters && annexes.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    style={{ marginTop: '0.75rem', background: 'rgba(45,126,247,0.15)', border: '1px solid rgba(45,126,247,0.3)', color: '#5ba4fa', borderRadius: 8, padding: '0.4rem 1rem', fontSize: 13, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                  >
+                    Clear all filters
+                  </button>
+                )}
+              </div>
+            )}
 
-        {/* ── 3-column Grid ── */}
-        {!loading && !error && filtered.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.3rem' }}>
+            {!loading && !error && filtered.length > 0 && (
+              <p className="result-label">
+                Showing <span>{filtered.length}</span> {filtered.length === 1 ? 'annex' : 'annexes'}
+                {search.trim() && <> matching <span>&quot;{search.trim()}&quot;</span></>}
+                {hasActiveFilters && !search.trim() && <> with current filters</>}
+                {annexes.length > filtered.length && (
+                  <> <span style={{ color: 'rgba(255,255,255,0.25)' }}>({annexes.length} total)</span></>
+                )}
+              </p>
+            )}
+
+            {/* ── Grid ── */}
+            {!loading && !error && filtered.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.3rem' }}>
             {filtered.map((annex, i) => {
               const amenities =
                 Array.isArray(annex.features) && annex.features.length > 0
@@ -689,8 +1016,10 @@ function AnnexBookingPage() {
                 </article>
               );
             })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* ── Footer note ── */}
         {!loading && !error && annexes.length > 0 && (

@@ -90,6 +90,20 @@ function SummaryRow({ label, value, highlight }) {
 const inputCls =
   'mt-0.5 w-full rounded-xl border border-[#232E45] bg-[#060F1E] px-3 py-2.5 text-sm text-gray-100 placeholder-gray-600 shadow-sm transition-colors focus:border-[#3b4f86] focus:outline-none focus:ring-1 focus:ring-[#3b4f86] hover:border-[#2e3c5e]';
 
+const UNIVERSITIES = [
+  { Name: 'SLIIT Malabe', Lat: 6.9147, Lng: 79.9723 },
+  { Name: 'University of Moratuwa', Lat: 6.7953, Lng: 79.9011 },
+  { Name: 'University of Peradeniya', Lat: 7.2546, Lng: 80.5974 },
+  { Name: 'University of Colombo', Lat: 6.902, Lng: 79.8587 },
+  { Name: 'University of Kelaniya', Lat: 6.9765, Lng: 79.9176 },
+  { Name: 'University of Sri Jayewardenepura', Lat: 6.8881, Lng: 79.8885 },
+  { Name: 'NIBM', Lat: 6.8878, Lng: 79.8964 },
+  { Name: 'KIU University', Lat: 6.90787, Lng: 79.928689 },
+  { Name: 'NSBM', Lat: 6.8214, Lng: 80.0398 },
+];
+
+const DEFAULT_CAMPUS = UNIVERSITIES[0];
+
 // ── Main component ──────────────────────────────────────────────────
 function AddAnnexPage() {
   const { user } = useAuth();
@@ -105,28 +119,30 @@ function AddAnnexPage() {
   const [imagePreviews, setImagePreviews] = useState([]);
   const [selectedAddress, setSelectedAddress] = useState('');
 
-  // Location State (Default to SLIIT Malabe area)
-  const [pinLocation, setPinLocation] = useState({ lat: 6.9147, lng: 79.9723 });
+  const [targetUniversity, setTargetUniversity] = useState(DEFAULT_CAMPUS.Name);
+  const [pinLocation, setPinLocation] = useState({
+    lat: DEFAULT_CAMPUS.Lat,
+    lng: DEFAULT_CAMPUS.Lng,
+  });
+  const [viewState, setViewState] = useState({
+    longitude: DEFAULT_CAMPUS.Lng,
+    latitude: DEFAULT_CAMPUS.Lat,
+    zoom: 14,
+  });
 
   // Status message state
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // Handle Map Click to move the pin
-  const handleMapClick = async (e) => {
-    setPinLocation({
-      lng: e.lngLat.lng,
-      lat: e.lngLat.lat,
-    });
-
+  const reverseGeocode = async (lng, lat) => {
     try {
       const token = import.meta.env.VITE_MAPBOX_TOKEN;
       if (!token) {
         setSelectedAddress('');
         return;
       }
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${e.lngLat.lng},${e.lngLat.lat}.json?access_token=${token}&limit=1`;
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&limit=1`;
       const response = await axios.get(url);
       const placeName = response.data?.features?.[0]?.place_name || '';
       setSelectedAddress(placeName);
@@ -134,6 +150,23 @@ function AddAnnexPage() {
       console.error('Error resolving address:', error);
       setSelectedAddress('');
     }
+  };
+
+  const handleTargetUniversityChange = (e) => {
+    const name = e.target.value;
+    setTargetUniversity(name);
+    const uni = UNIVERSITIES.find((u) => u.Name === name);
+    if (!uni) return;
+    setPinLocation({ lat: uni.Lat, lng: uni.Lng });
+    setViewState((vs) => ({ ...vs, longitude: uni.Lng, latitude: uni.Lat }));
+    reverseGeocode(uni.Lng, uni.Lat);
+  };
+
+  const handleMapClick = async (e) => {
+    const { lng, lat } = e.lngLat;
+    setPinLocation({ lng, lat });
+    setViewState((vs) => ({ ...vs, longitude: lng, latitude: lat }));
+    await reverseGeocode(lng, lat);
   };
 
   // Handle Form Submission
@@ -187,6 +220,9 @@ function AddAnnexPage() {
         setTitle(''); setPrice(''); setDescription(''); setPreferredGender('Any');
         setFeaturesInput(''); setRulesInput(''); setImageFiles([]);
         setImagePreviews([]); setSelectedAddress('');
+        setTargetUniversity(DEFAULT_CAMPUS.Name);
+        setPinLocation({ lat: DEFAULT_CAMPUS.Lat, lng: DEFAULT_CAMPUS.Lng });
+        setViewState({ longitude: DEFAULT_CAMPUS.Lng, latitude: DEFAULT_CAMPUS.Lat, zoom: 14 });
       }
     } catch (error) {
       console.error('Error adding annex:', error);
@@ -229,6 +265,33 @@ function AddAnnexPage() {
 
           {/* ── LEFT column ── */}
           <div className="space-y-5">
+
+            <SectionCard
+              title="Target University"
+              subtitle="Pick a campus to center the map and drop the pin there. You can still click the map to fine-tune."
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z" />
+                </svg>
+              }
+            >
+              <Field
+                label="Target University"
+                hint="Helps students see listings relative to where they study."
+              >
+                <select
+                  value={targetUniversity}
+                  onChange={handleTargetUniversityChange}
+                  className={`${inputCls} appearance-none cursor-pointer`}
+                >
+                  {UNIVERSITIES.map((u) => (
+                    <option key={u.Name} value={u.Name}>
+                      {u.Name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </SectionCard>
 
             {/* Basic Info */}
             <SectionCard
@@ -405,11 +468,8 @@ function AddAnnexPage() {
                 <div className="relative rounded-xl overflow-hidden border border-[#232E45]" style={{ height: 320 }}>
                   <Map
                     mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
-                    initialViewState={{
-                      longitude: pinLocation.lng,
-                      latitude: pinLocation.lat,
-                      zoom: 14,
-                    }}
+                    {...viewState}
+                    onMove={(e) => setViewState(e.viewState)}
                     mapStyle="mapbox://styles/mapbox/dark-v11"
                     onClick={handleMapClick}
                     cursor="crosshair"
