@@ -22,6 +22,8 @@ const annexSchema = new mongoose.Schema({
         enum: ['Male', 'Female', 'Any'], // Only allows these 3 exact words
         default: 'Any'
     },
+    roomCount: { type: String, default: '1' },
+    studentsPerRoom: { type: String, default: '1' },
     
     location: {
         type: {

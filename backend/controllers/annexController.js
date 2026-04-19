@@ -76,6 +76,8 @@ const createAnnex = async (req, res) => {
             description: req.body.description,
             selectedAddress: req.body.selectedAddress || '',
             preferredGender: req.body.preferredGender || 'Any',
+            roomCount: req.body.roomCount || '1',
+            studentsPerRoom: req.body.studentsPerRoom || '1',
             features: parseIfString(req.body.features, []),
             rulesAndConditions: parseIfString(req.body.rulesAndConditions, []),
             tags: parseIfString(req.body.tags, ["New"]),

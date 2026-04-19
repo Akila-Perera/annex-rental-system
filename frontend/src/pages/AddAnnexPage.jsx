@@ -113,6 +113,8 @@ function AddAnnexPage() {
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
   const [preferredGender, setPreferredGender] = useState('Any');
+  const [roomCount, setRoomCount] = useState('1');
+  const [studentsPerRoom, setStudentsPerRoom] = useState('1');
   const [featuresInput, setFeaturesInput] = useState('');
   const [rulesInput, setRulesInput] = useState('');
   const [imageFiles, setImageFiles] = useState([]);
@@ -188,6 +190,8 @@ function AddAnnexPage() {
       price: Number(price),
       description,
       preferredGender,
+      roomCount,
+      studentsPerRoom,
       features,
       rulesAndConditions,
       selectedAddress,
@@ -201,6 +205,8 @@ function AddAnnexPage() {
     formData.append('price', String(newAnnexData.price));
     formData.append('description', newAnnexData.description);
     formData.append('preferredGender', newAnnexData.preferredGender);
+    formData.append('roomCount', newAnnexData.roomCount);
+    formData.append('studentsPerRoom', newAnnexData.studentsPerRoom);
     formData.append('features', JSON.stringify(newAnnexData.features));
     formData.append('rulesAndConditions', JSON.stringify(newAnnexData.rulesAndConditions));
     formData.append('selectedAddress', newAnnexData.selectedAddress);
@@ -218,6 +224,7 @@ function AddAnnexPage() {
         setMessage('success:Annex successfully added to the system!');
         setSubmitted(true);
         setTitle(''); setPrice(''); setDescription(''); setPreferredGender('Any');
+        setRoomCount('1'); setStudentsPerRoom('1');
         setFeaturesInput(''); setRulesInput(''); setImageFiles([]);
         setImagePreviews([]); setSelectedAddress('');
         setTargetUniversity(DEFAULT_CAMPUS.Name);
@@ -383,6 +390,46 @@ function AddAnnexPage() {
                     <option value="Any">Any (Boys & Girls)</option>
                     <option value="Male">Male Only</option>
                     <option value="Female">Female Only</option>
+                  </select>
+                </Field>
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              title="Room & Capacity"
+              subtitle="Specify room count and how many students each room can accommodate."
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              }
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field label="Number of Rooms">
+                  <select
+                    value={roomCount}
+                    onChange={(e) => setRoomCount(e.target.value)}
+                    className={`${inputCls} appearance-none cursor-pointer`}
+                  >
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6+">6+</option>
+                  </select>
+                </Field>
+                <Field label="Students per Room">
+                  <select
+                    value={studentsPerRoom}
+                    onChange={(e) => setStudentsPerRoom(e.target.value)}
+                    className={`${inputCls} appearance-none cursor-pointer`}
+                  >
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="Shared (5+)">Shared (5+)</option>
                   </select>
                 </Field>
               </div>
@@ -589,6 +636,8 @@ function AddAnnexPage() {
               <div className="space-y-2.5">
                 <SummaryRow label="Price" value={price ? `Rs. ${Number(price).toLocaleString()} / mo` : null} highlight={!!price} />
                 <SummaryRow label="Gender" value={preferredGender} highlight={!!preferredGender} />
+                <SummaryRow label="Room Count" value={roomCount} highlight={!!roomCount} />
+                <SummaryRow label="Capacity" value={studentsPerRoom} highlight={!!studentsPerRoom} />
                 <SummaryRow label="Features" value={featuresInput ? `${featuresInput.split(',').filter(Boolean).length} listed` : null} highlight={!!featuresInput} />
                 <SummaryRow label="Photos" value={imageFiles.length > 0 ? `${imageFiles.length} uploaded` : null} highlight={imageFiles.length > 0} />
                 <SummaryRow label="Location" value={selectedAddress ? 'Pinned ✓' : null} highlight={!!selectedAddress} />

@@ -578,9 +578,11 @@ function AnnexBookingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('newest');
   const [filterPriceMin, setFilterPriceMin] = useState('');
   const [filterPriceMax, setFilterPriceMax] = useState('');
   const [filterGender, setFilterGender] = useState('Any');
+  const [filterRoomCount, setFilterRoomCount] = useState('');
   const [amenityFilters, setAmenityFilters] = useState(() =>
     Object.fromEntries(AMENITY_OPTIONS.map((k) => [k, false]))
   );
@@ -638,9 +640,11 @@ function AnnexBookingPage() {
 
   const clearFilters = () => {
     setSearch('');
+    setSortBy('newest');
     setFilterPriceMin('');
     setFilterPriceMax('');
     setFilterGender('Any');
+    setFilterRoomCount('');
     setAmenityFilters(Object.fromEntries(AMENITY_OPTIONS.map((k) => [k, false])));
     setFilterUniversity(null);
   };
@@ -650,6 +654,7 @@ function AnnexBookingPage() {
     filterPriceMin !== '' ||
     filterPriceMax !== '' ||
     filterGender !== 'Any' ||
+    filterRoomCount !== '' ||
     AMENITY_OPTIONS.some((k) => amenityFilters[k]) ||
     filterUniversity != null;
 
@@ -681,6 +686,17 @@ function AnnexBookingPage() {
       });
     }
 
+    if (filterRoomCount) {
+      list = list.filter((a) => {
+        const raw = String(a.roomCount ?? '1').trim();
+        const numeric = parseInt(raw, 10);
+        if (filterRoomCount === '6+') {
+          return !Number.isNaN(numeric) && numeric >= 6;
+        }
+        return raw === filterRoomCount;
+      });
+    }
+
     const requiredAmenities = AMENITY_OPTIONS.filter((k) => amenityFilters[k]);
     if (requiredAmenities.length > 0) {
       list = list.filter((a) => {
@@ -702,13 +718,24 @@ function AnnexBookingPage() {
       });
     }
 
-    return list;
+    const sorted = [...list];
+    if (sortBy === 'price_asc') {
+      sorted.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
+    } else if (sortBy === 'price_desc') {
+      sorted.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
+    } else {
+      sorted.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    }
+
+    return sorted;
   }, [
     annexes,
     search,
+    sortBy,
     filterPriceMin,
     filterPriceMax,
     filterGender,
+    filterRoomCount,
     amenityFilters,
     filterUniversity,
   ]);
@@ -795,6 +822,23 @@ function AnnexBookingPage() {
             </div>
 
             <div className="filter-block">
+              <p className="filter-block-label">Number of Rooms</p>
+              <select
+                className="filter-inp filter-select"
+                value={filterRoomCount}
+                onChange={(e) => setFilterRoomCount(e.target.value)}
+              >
+                <option value="">Any</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6+">6+</option>
+              </select>
+            </div>
+
+            <div className="filter-block">
               <p className="filter-block-label">Amenities</p>
               {AMENITY_OPTIONS.map((key) => (
                 <label key={key} className="filter-check">
@@ -857,6 +901,37 @@ function AnnexBookingPage() {
               )}
             </div>
 
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
+              <label
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.55rem',
+                  padding: '0.45rem 0.7rem',
+                  borderRadius: 10,
+                  background: 'rgba(8,16,35,0.65)',
+                  border: '1px solid rgba(45,126,247,0.25)',
+                  backdropFilter: 'blur(10px)',
+                  color: 'rgba(255,255,255,0.72)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                Sort
+                <select
+                  className="filter-inp filter-select"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  style={{ minWidth: 180, padding: '0.36rem 0.55rem', marginTop: 0 }}
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="price_asc">Price: Low to High</option>
+                  <option value="price_desc">Price: High to Low</option>
+                </select>
+              </label>
+            </div>
+
             <hr className="section-divider" />
 
             {loading && <SkeletonGrid />}
@@ -911,6 +986,8 @@ function AnnexBookingPage() {
                   : Array.isArray(annex.amenities) && annex.amenities.length > 0
                   ? annex.amenities.slice(0, 4)
                   : DEFAULT_AMENITIES;
+              const roomCount = annex.roomCount || '1';
+              const studentsPerRoom = annex.studentsPerRoom || '1';
 
               const desc = generateDesc(annex);
 
@@ -960,6 +1037,28 @@ function AnnexBookingPage() {
                     <h2 style={{ fontSize: '0.95rem', fontWeight: 700, fontFamily: "'Syne', sans-serif", color: '#e8eeff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: '0 0 0.5rem' }}>
                       {annex.title}
                     </h2>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        gap: '0.45rem',
+                        margin: '0 0 0.52rem',
+                        color: '#dbeafe',
+                        fontSize: '0.76rem',
+                        fontFamily: "'DM Sans', sans-serif",
+                        fontWeight: 700,
+                      }}
+                    >
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                        <span aria-hidden>🏠</span> {roomCount} room{roomCount === '1' ? '' : 's'}
+                      </span>
+                      <span style={{ color: 'rgba(171, 201, 255, 0.55)' }}>•</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                        <span aria-hidden>👥</span> {studentsPerRoom} per room
+                      </span>
+                    </div>
 
                     {/* ── Location — green glowy pill ── */}
                     <div className="location-row">
