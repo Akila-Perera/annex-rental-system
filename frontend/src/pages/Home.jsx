@@ -296,7 +296,7 @@ const Home = () => {
               alt="UniNEST Logo"
               className="w-16 h-16 rounded-[56px] object-contain"
             />
-            <span className="font-display text-[1.3rem] font-extrabold text-[#f0f4ff]">Uni<span className="text-blue-400">NEST</span></span>
+            <span className="font-display text-[1.3rem] font-extrabold text-[#f0f4ff]">UNI<span className="text-blue-400">NEST</span></span>
           </div>
 
           <ul className="hidden md:flex gap-1 ml-auto">

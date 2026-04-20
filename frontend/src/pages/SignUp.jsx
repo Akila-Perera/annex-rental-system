@@ -79,10 +79,16 @@ export default function SignUp() {
   return (
     <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-lg bg-[#111827] border border-[#1f2a3c] rounded-2xl p-8 shadow-2xl">
-        {/* Logo / Header */}
+
+        {/* ✅ UPDATED: Logo / Header — image logo bigger than text */}
         <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-lg">U</div>
-          <span className="text-white text-2xl font-bold tracking-tight">UniNEST</span>
+          <img
+            src="/ITPM Images/ITPM.png"
+            alt="UniNEST Logo"
+            style={{ width: '84px', height: '84px' }}
+            className="rounded-xl object-contain"
+          />
+          <span className="text-blue-500 text-3xl font-bold tracking-tight">UNINEST</span>
         </div>
 
         <h2 className="text-white text-2xl font-semibold mb-1">Create your account</h2>
