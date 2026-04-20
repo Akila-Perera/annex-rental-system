@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
+const BASE = 'http://localhost:5000/api';
+
 function SupportDetails() {
   const navigate = useNavigate();
 
@@ -22,6 +24,9 @@ function SupportDetails() {
     }
   });
 
+  // ── Expanded AI response cards ──
+  const [expandedAI, setExpandedAI] = useState(new Set());
+
   // ── Review State ──
   const [reviews, setReviews] = useState({ pending: [], approved: [], rejected: [], flagged: [] });
   const [stats, setStats] = useState({ totalReviews: 0, pendingReviews: 0, approvedReviews: 0, rejectedReviews: 0, flaggedReviews: 0 });
@@ -37,6 +42,9 @@ function SupportDetails() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // ── Retry loading state ──
+  const [retryingIds, setRetryingIds] = useState(new Set());
+
   // ── Admin guard ──
   useEffect(() => {
     if (localStorage.getItem('uninest_admin') !== 'true') {
@@ -49,14 +57,23 @@ function SupportDetails() {
     localStorage.setItem('uninest_read_ids', JSON.stringify([...readIds]));
   }, [readIds]);
 
+  // ── Helper: get admin token (try multiple common keys) ──
+  const getAdminToken = () =>
+    localStorage.getItem('uninest_admin_token') ||
+    localStorage.getItem('adminToken') ||
+    localStorage.getItem('token') ||
+    '';
+
   // ── Support Fetch ──
+  // Uses /api/support/all — no auth middleware on this route
   const fetchSupports = useCallback(async () => {
     setSupportLoading(true);
     try {
-      const res = await axios.get('http://localhost:5000/api/support');
+      // ✅ KEY FIX: use /all endpoint that has no protect middleware
+      const res = await axios.get(`${BASE}/support/all`);
       setSupports(res.data.data || []);
     } catch (err) {
-      console.error('Support Fetch Error:', err);
+      console.error('Support Fetch Error:', err.response?.data || err.message);
       setSupports([]);
     } finally {
       setSupportLoading(false);
@@ -67,15 +84,16 @@ function SupportDetails() {
   const fetchReviews = useCallback(async () => {
     setReviewLoading(true);
     try {
-      const baseUrl = 'http://localhost:5000/api';
+      const token = getAdminToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const [revRes, statsRes] = await Promise.all([
-        axios.get(`${baseUrl}/admin/reviews?status=${reviewSubTab}`),
-        axios.get(`${baseUrl}/admin/stats`),
+        axios.get(`${BASE}/admin/reviews?status=${reviewSubTab}`, { headers }),
+        axios.get(`${BASE}/admin/stats`, { headers }),
       ]);
       setReviews((prev) => ({ ...prev, [reviewSubTab]: revRes.data.reviews || [] }));
       setStats(statsRes.data.stats || {});
     } catch (err) {
-      console.error('Review Fetch Error:', err);
+      console.error('Review Fetch Error:', err.response?.data || err.message);
     } finally {
       setReviewLoading(false);
     }
@@ -86,15 +104,22 @@ function SupportDetails() {
     else fetchReviews();
   }, [activeTab, reviewSubTab, fetchSupports, fetchReviews]);
 
+  // ── Toggle AI response expanded ──
+  const toggleAI = (id) => {
+    setExpandedAI((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   // ── Mark as Read / Unread toggle ──
   const toggleRead = (id) => {
     setReadIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -105,20 +130,24 @@ function SupportDetails() {
   };
 
   // ── Computed read/unread counts ──
-  const readCount = supports.filter((s) => readIds.has(s._id)).length;
-  const unreadCount = supports.length - readCount;
+  const readCount   = supports.filter((s) =>  readIds.has(s._id)).length;
+  const unreadCount = supports.filter((s) => !readIds.has(s._id)).length;
+
+  // ── Computed AI stats ──
+  const aiSentCount    = supports.filter((s) => s.aiStatus === 'sent').length;
+  const aiFailedCount  = supports.filter((s) => s.aiStatus === 'failed').length;
+  const aiPendingCount = supports.filter((s) => s.aiStatus === 'pending').length;
 
   // ── DELETE — open confirm modal ──
-  const handleDeleteClick = (item) => {
-    setDeleteTarget(item);
-  };
+  const handleDeleteClick = (item) => setDeleteTarget(item);
 
   // ── DELETE — confirmed ──
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
     setDeleteLoading(true);
     try {
-      await axios.delete(`http://localhost:5000/api/support/${deleteTarget._id}`);
+      // No auth needed — route has no protect middleware
+      await axios.delete(`${BASE}/support/${deleteTarget._id}`);
       setSupports((prev) => prev.filter((s) => s._id !== deleteTarget._id));
       setReadIds((prev) => {
         const next = new Set(prev);
@@ -127,25 +156,22 @@ function SupportDetails() {
       });
       setDeleteTarget(null);
     } catch (err) {
-      console.error('Delete failed:', err);
+      console.error('Delete failed:', err.response?.data || err.message);
       alert('Failed to delete support request.');
     } finally {
       setDeleteLoading(false);
     }
   };
 
-  // ── DELETE — cancelled ──
-  const handleDeleteCancel = () => {
-    setDeleteTarget(null);
-  };
+  const handleDeleteCancel = () => setDeleteTarget(null);
 
   // ── OPEN edit modal ──
   const handleOpenEdit = (item) => {
     setEditItem(item);
     setEditForm({
-      firstName: item.firstName || '',
-      lastName: item.lastName || '',
-      email: item.email || '',
+      firstName:   item.firstName   || '',
+      lastName:    item.lastName    || '',
+      email:       item.email       || '',
       phoneNumber: item.phoneNumber || '',
       description: item.description || '',
     });
@@ -157,14 +183,34 @@ function SupportDetails() {
     setEditLoading(true);
     setError('');
     try {
-      await axios.put(`http://localhost:5000/api/support/${editItem._id}`, editForm);
+      // No auth needed — route has no protect middleware
+      await axios.put(`${BASE}/support/${editItem._id}`, editForm);
       setEditItem(null);
       fetchSupports();
     } catch (err) {
-      console.error('Update failed:', err);
+      console.error('Update failed:', err.response?.data || err.message);
       setError('Failed to update. Please try again.');
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  // ── RETRY AI ──
+  const handleRetryAI = async (id) => {
+    setRetryingIds((prev) => new Set(prev).add(id));
+    try {
+      // No auth needed — route has no protect middleware
+      await axios.post(`${BASE}/support/${id}/retry-ai`, {});
+      await fetchSupports();
+    } catch (err) {
+      console.error('Retry failed:', err.response?.data || err.message);
+      alert('Retry failed. Please try again.');
+    } finally {
+      setRetryingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
   };
 
@@ -176,7 +222,12 @@ function SupportDetails() {
       if (!note) return;
     }
     try {
-      await axios.put(`http://localhost:5000/api/admin/reviews/${id}/${action}`, { moderationNotes: note });
+      const token = getAdminToken();
+      await axios.put(
+        `${BASE}/admin/reviews/${id}/${action}`,
+        { moderationNotes: note },
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      );
       fetchReviews();
     } catch (err) {
       alert(`Failed to ${action} review`);
@@ -191,25 +242,32 @@ function SupportDetails() {
   const formatDate = (d) =>
     d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
 
+  const formatDateTime = (d) =>
+    d ? new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
+
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#f0f4ff] px-4 py-10 relative overflow-hidden">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap');
         .font-display { font-family: 'Syne', sans-serif; }
         body { font-family: 'DM Sans', sans-serif; }
-        .glow-blue { background: radial-gradient(circle, rgba(45,126,247,0.12) 0%, transparent 70%); }
+        .glow-blue   { background: radial-gradient(circle, rgba(45,126,247,0.12) 0%, transparent 70%); }
         .glow-purple { background: radial-gradient(circle, rgba(147,51,234,0.12) 0%, transparent 70%); }
 
-        /* Read badge pulse */
         @keyframes badgePop {
-          0% { transform: scale(0.8); opacity: 0; }
-          100% { transform: scale(1); opacity: 1; }
+          0%   { transform: scale(0.8); opacity: 0; }
+          100% { transform: scale(1);   opacity: 1; }
         }
         .badge-pop { animation: badgePop 0.2s ease-out forwards; }
 
-        /* Unread card left border */
         .card-unread { border-left: 3px solid #3b82f6 !important; }
         .card-read   { border-left: 3px solid #22c55e !important; opacity: 0.75; }
+
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .ai-expand { animation: slideDown 0.25s ease forwards; }
       `}</style>
 
       {/* Background glow */}
@@ -261,26 +319,37 @@ function SupportDetails() {
         ══════════════════════════════════════ */}
         {activeTab === 'support' && (
           <div>
-            {/* Stats bar — replaced "Open" with Read/Unread counts */}
-            <div className="grid grid-cols-4 gap-1 bg-[#161b25] border border-white/5 rounded-2xl mb-8 overflow-hidden">
-              <div className="p-6 text-center">
+
+            {/* Stats bar */}
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-1 bg-[#161b25] border border-white/5 rounded-2xl mb-8 overflow-hidden">
+              <div className="p-5 text-center">
                 <div className="text-2xl font-display font-bold text-blue-400">{supports.length}</div>
-                <div className="text-xs text-[#5a6478] uppercase font-bold">Total Requests</div>
+                <div className="text-[10px] text-[#5a6478] uppercase font-bold mt-1">Total</div>
               </div>
-              <div className="p-6 text-center border-l border-white/5">
+              <div className="p-5 text-center border-l border-white/5">
                 <div className="text-2xl font-display font-bold text-blue-400">{new Set(supports.map((s) => s.email)).size}</div>
-                <div className="text-xs text-[#5a6478] uppercase font-bold">Unique Users</div>
+                <div className="text-[10px] text-[#5a6478] uppercase font-bold mt-1">Unique Users</div>
               </div>
-              <div className="p-6 text-center border-l border-white/5">
+              <div className="p-5 text-center border-l border-white/5">
                 <div className="text-2xl font-display font-bold text-red-400 flex items-center justify-center gap-1">
                   <span className="inline-block w-2 h-2 rounded-full bg-red-400 animate-pulse" />
                   {unreadCount}
                 </div>
-                <div className="text-xs text-[#5a6478] uppercase font-bold">Unread</div>
+                <div className="text-[10px] text-[#5a6478] uppercase font-bold mt-1">Unread</div>
               </div>
-              <div className="p-6 text-center border-l border-white/5">
+              <div className="p-5 text-center border-l border-white/5">
                 <div className="text-2xl font-display font-bold text-green-400">{readCount}</div>
-                <div className="text-xs text-[#5a6478] uppercase font-bold">Read</div>
+                <div className="text-[10px] text-[#5a6478] uppercase font-bold mt-1">Read</div>
+              </div>
+              <div className="p-5 text-center border-l border-white/5">
+                <div className="text-2xl font-display font-bold text-emerald-400 flex items-center justify-center gap-1">
+                  🤖 {aiSentCount}
+                </div>
+                <div className="text-[10px] text-[#5a6478] uppercase font-bold mt-1">AI Replied</div>
+              </div>
+              <div className="p-5 text-center border-l border-white/5">
+                <div className="text-2xl font-display font-bold text-orange-400">{aiFailedCount}</div>
+                <div className="text-[10px] text-[#5a6478] uppercase font-bold mt-1">AI Failed</div>
               </div>
             </div>
 
@@ -291,6 +360,9 @@ function SupportDetails() {
                   {unreadCount > 0
                     ? `${unreadCount} unread request${unreadCount > 1 ? 's' : ''}`
                     : 'All requests marked as read'}
+                  {aiFailedCount > 0 && (
+                    <span className="ml-3 text-orange-400">· {aiFailedCount} AI response{aiFailedCount > 1 ? 's' : ''} failed</span>
+                  )}
                 </p>
                 {unreadCount > 0 && (
                   <button
@@ -314,13 +386,16 @@ function SupportDetails() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {supports.map((item) => {
-                  const isRead = readIds.has(item._id);
+                  const isRead       = readIds.has(item._id);
+                  const isAIExpanded = expandedAI.has(item._id);
+                  const isRetrying   = retryingIds.has(item._id);
+
                   return (
                     <div
                       key={item._id}
                       className={`bg-[#1a2030] border border-white/5 p-6 rounded-[24px] transition-all group ${isRead ? 'card-read' : 'card-unread'}`}
                     >
-                      {/* Avatar + name + read badge */}
+                      {/* Avatar + name + badges */}
                       <div className="flex items-center gap-4 mb-4">
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg flex-shrink-0 transition-colors ${isRead ? 'bg-green-600/80' : 'bg-blue-600'}`}>
                           {item?.firstName?.[0] || '?'}{item?.lastName?.[0] || ''}
@@ -328,6 +403,7 @@ function SupportDetails() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <h4 className="font-bold text-[#f0f4ff]">{item?.firstName} {item?.lastName}</h4>
+
                             {/* Read / Unread badge */}
                             {isRead ? (
                               <span className="badge-pop inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/15 border border-green-500/25 text-green-400 text-[10px] font-bold uppercase">
@@ -342,25 +418,103 @@ function SupportDetails() {
                                 Unread
                               </span>
                             )}
+
+                            {/* AI Status badge */}
+                            {item.aiStatus === 'sent' && (
+                              <span className="badge-pop inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 text-[10px] font-bold uppercase">
+                                🤖 AI Replied
+                              </span>
+                            )}
+                            {item.aiStatus === 'failed' && (
+                              <span className="badge-pop inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/25 text-red-400 text-[10px] font-bold uppercase">
+                                ⚠ AI Failed
+                              </span>
+                            )}
+                            {item.aiStatus === 'pending' && (
+                              <span className="badge-pop inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-500/15 border border-yellow-500/25 text-yellow-400 text-[10px] font-bold uppercase">
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
+                                Pending
+                              </span>
+                            )}
+                            {item.aiStatus === 'processing' && (
+                              <span className="badge-pop inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/25 text-blue-400 text-[10px] font-bold uppercase">
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                                Processing
+                              </span>
+                            )}
                           </div>
-                          <p className="text-[10px] text-[#5a6478] uppercase font-bold">{formatDate(item?.createdAt)}</p>
+                          <p className="text-[10px] text-[#5a6478] uppercase font-bold mt-0.5">{formatDate(item?.createdAt)}</p>
                         </div>
                       </div>
 
-                      {/* Contact */}
+                      {/* Contact info */}
                       <div className="text-sm text-[#8a96b0] mb-4 space-y-1">
                         <p>📧 {item?.email}</p>
                         <p>📞 {item?.phoneNumber}</p>
+                        {item?.userId && typeof item.userId === 'object' && (
+                          <p className="text-[10px] text-[#5a6478]">👤 User: {item.userId.firstName} {item.userId.lastName} · {item.userId.role}</p>
+                        )}
                       </div>
 
-                      {/* Description */}
-                      <div className="bg-white/5 p-4 rounded-xl text-sm text-[#f0f4ff]/80 mb-6 leading-relaxed">
-                        {item?.description}
+                      {/* User issue */}
+                      <div className="mb-4">
+                        <p className="text-[10px] text-[#5a6478] uppercase font-bold mb-2">User Issue</p>
+                        <div className="bg-white/5 p-4 rounded-xl text-sm text-[#f0f4ff]/80 leading-relaxed">
+                          {item?.description}
+                        </div>
                       </div>
+
+                      {/* ── AI Response section ── */}
+                      {(item.aiStatus === 'sent' || item.aiStatus === 'processing' || item.aiStatus === 'pending') && (
+                        <div className="mb-4">
+                          {item.aiStatus === 'sent' && item.aiResponse ? (
+                            <>
+                              <button
+                                onClick={() => toggleAI(item._id)}
+                                className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl bg-emerald-500/8 border border-emerald-500/20 text-emerald-400 text-xs font-bold hover:bg-emerald-500/15 transition-all"
+                                style={{ background: 'rgba(16,185,129,0.06)' }}
+                              >
+                                <span className="flex items-center gap-2">
+                                  🤖 AI Response
+                                  {item.resolvedAt && (
+                                    <span className="text-emerald-400/60 font-normal">
+                                      · sent {formatDateTime(item.resolvedAt)}
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="text-emerald-400/70">{isAIExpanded ? '▲ Hide' : '▼ Show'}</span>
+                              </button>
+
+                              {isAIExpanded && (
+                                <div className="ai-expand mt-2 bg-emerald-500/5 border border-emerald-500/15 rounded-xl p-4">
+                                  <pre className="text-sm text-[#c8d0e0] leading-relaxed whitespace-pre-wrap font-sans">
+                                    {item.aiResponse}
+                                  </pre>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="px-4 py-3 rounded-xl border border-yellow-500/20 flex items-center gap-3" style={{ background: 'rgba(245,158,11,0.05)' }}>
+                              <div className="flex gap-1">
+                                {[0,1,2].map(i => (
+                                  <span key={i} className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" style={{ animationDelay: `${i * 0.2}s` }} />
+                                ))}
+                              </div>
+                              <p className="text-yellow-400 text-xs font-medium">AI is preparing a response…</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Failed AI notice */}
+                      {item.aiStatus === 'failed' && (
+                        <div className="mb-4 bg-red-500/5 border border-red-500/20 rounded-xl px-4 py-3 text-xs text-red-400">
+                          ⚠ AI response failed to send. Use "Retry AI" to attempt again.
+                        </div>
+                      )}
 
                       {/* Action buttons */}
-                      <div className="flex gap-2">
-                        {/* Mark as Read / Unread */}
+                      <div className="flex gap-2 flex-wrap">
                         <button
                           onClick={() => toggleRead(item._id)}
                           className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all border ${
@@ -371,12 +525,29 @@ function SupportDetails() {
                         >
                           {isRead ? '↩ Mark Unread' : '✓ Mark as Read'}
                         </button>
+
+                        {item.aiStatus === 'failed' && (
+                          <button
+                            onClick={() => handleRetryAI(item._id)}
+                            disabled={isRetrying}
+                            className="flex-1 py-2 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-lg text-xs font-bold hover:bg-yellow-500 hover:text-white transition-all disabled:opacity-50 flex items-center justify-center gap-1"
+                          >
+                            {isRetrying ? (
+                              <>
+                                <div className="w-3 h-3 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+                                Retrying…
+                              </>
+                            ) : '🔄 Retry AI'}
+                          </button>
+                        )}
+
                         <button
                           onClick={() => handleOpenEdit(item)}
                           className="flex-1 py-2 bg-white/5 rounded-lg text-xs font-bold hover:bg-blue-600 transition-all border border-transparent"
                         >
                           Update
                         </button>
+
                         <button
                           onClick={() => handleDeleteClick(item)}
                           className="flex-1 py-2 bg-white/5 rounded-lg text-xs font-bold hover:bg-red-600 transition-all border border-transparent"
@@ -397,7 +568,6 @@ function SupportDetails() {
         ══════════════════════════════════════ */}
         {activeTab === 'reviews' && (
           <div>
-            {/* Stats bar */}
             <div className="grid grid-cols-4 gap-1 bg-[#161b25] border border-white/5 rounded-2xl mb-8 overflow-hidden">
               <div className="p-4 text-center">
                 <div className="text-xl font-display font-bold text-purple-400">{stats.pendingReviews || 0}</div>
@@ -417,7 +587,6 @@ function SupportDetails() {
               </div>
             </div>
 
-            {/* Sub-tabs */}
             <div className="flex gap-2 mb-8">
               {['pending', 'approved', 'rejected', 'flagged'].map((s) => (
                 <button
@@ -467,8 +636,8 @@ function SupportDetails() {
                     {reviewSubTab === 'pending' && (
                       <div className="flex md:flex-col gap-2 justify-center">
                         <button onClick={() => handleReviewAction(rev._id, 'approve')} className="px-4 py-2 bg-green-500/20 text-green-400 border border-green-500/20 rounded-lg text-xs font-bold hover:bg-green-500 hover:text-white transition-all">Approve</button>
-                        <button onClick={() => handleReviewAction(rev._id, 'reject')} className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-xs font-bold hover:bg-red-500 hover:text-white transition-all">Reject</button>
-                        <button onClick={() => handleReviewAction(rev._id, 'flag')} className="px-4 py-2 bg-orange-500/20 text-orange-400 border border-orange-500/20 rounded-lg text-xs font-bold hover:bg-orange-500 hover:text-white transition-all">Flag</button>
+                        <button onClick={() => handleReviewAction(rev._id, 'reject')}  className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-xs font-bold hover:bg-red-500 hover:text-white transition-all">Reject</button>
+                        <button onClick={() => handleReviewAction(rev._id, 'flag')}    className="px-4 py-2 bg-orange-500/20 text-orange-400 border border-orange-500/20 rounded-lg text-xs font-bold hover:bg-orange-500 hover:text-white transition-all">Flag</button>
                       </div>
                     )}
                   </div>
@@ -485,8 +654,6 @@ function SupportDetails() {
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
           <div className="w-full max-w-sm bg-[#1a2030] border border-red-500/20 rounded-3xl p-8 shadow-2xl">
-
-            {/* Trash icon */}
             <div className="flex items-center justify-center mb-5">
               <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -494,22 +661,14 @@ function SupportDetails() {
                 </svg>
               </div>
             </div>
-
-            {/* Message */}
             <div className="text-center mb-6">
-              <h3 className="font-display text-xl font-bold text-white mb-2">
-                Delete Support Request?
-              </h3>
+              <h3 className="font-display text-xl font-bold text-white mb-2">Delete Support Request?</h3>
               <p className="text-sm text-[#8a96b0] leading-relaxed">
                 You are about to permanently delete the request from{' '}
-                <span className="text-white font-bold">
-                  {deleteTarget.firstName} {deleteTarget.lastName}
-                </span>
-                . This action <span className="text-red-400 font-semibold">cannot be undone</span>.
+                <span className="text-white font-bold">{deleteTarget.firstName} {deleteTarget.lastName}</span>.
+                This action <span className="text-red-400 font-semibold">cannot be undone</span>.
               </p>
             </div>
-
-            {/* Yes / No buttons */}
             <div className="flex gap-3">
               <button
                 onClick={handleDeleteCancel}
@@ -548,16 +707,12 @@ function SupportDetails() {
       {editItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
           <div className="w-full max-w-lg bg-[#1a2030] border border-white/10 rounded-3xl p-8 shadow-2xl relative">
-
-            {/* Close button */}
             <button
               onClick={() => { setEditItem(null); setError(''); }}
               className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-[#8a96b0] hover:text-white transition-all text-lg"
             >
               ✕
             </button>
-
-            {/* Modal header */}
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center font-bold">
                 {editItem?.firstName?.[0] || '?'}{editItem?.lastName?.[0] || ''}
@@ -567,8 +722,6 @@ function SupportDetails() {
                 <p className="text-xs text-[#5a6478]">ID: {editItem._id}</p>
               </div>
             </div>
-
-            {/* Form fields */}
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -590,7 +743,6 @@ function SupportDetails() {
                   />
                 </div>
               </div>
-
               <div>
                 <label className="block text-xs text-[#5a6478] uppercase font-bold mb-1">Email</label>
                 <input
@@ -600,7 +752,6 @@ function SupportDetails() {
                   className="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-[#5a6478] focus:border-blue-500 focus:outline-none transition-colors"
                 />
               </div>
-
               <div>
                 <label className="block text-xs text-[#5a6478] uppercase font-bold mb-1">Phone Number</label>
                 <input
@@ -610,7 +761,6 @@ function SupportDetails() {
                   className="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-[#5a6478] focus:border-blue-500 focus:outline-none transition-colors"
                 />
               </div>
-
               <div>
                 <label className="block text-xs text-[#5a6478] uppercase font-bold mb-1">Description</label>
                 <textarea
@@ -620,15 +770,11 @@ function SupportDetails() {
                   className="w-full bg-[#0d1117] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-[#5a6478] focus:border-blue-500 focus:outline-none transition-colors resize-none"
                 />
               </div>
-
-              {/* Error */}
               {error && (
                 <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-400">
                   <span>⚠</span> {error}
                 </div>
               )}
-
-              {/* Modal actions */}
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => { setEditItem(null); setError(''); }}
