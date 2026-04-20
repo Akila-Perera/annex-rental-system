@@ -27,7 +27,6 @@ const topRatedStyles = `
     to   { opacity: 1; transform: scale(1); }
   }
 
-  /* ── Card shell — identical to AnnexBookingPage .annex-card ── */
   .tr-card {
     background: rgba(255,255,255,0.04);
     backdrop-filter: blur(14px);
@@ -47,7 +46,6 @@ const topRatedStyles = `
   .tr-card:hover .tr-card-img { transform: scale(1.07); }
   .tr-card-img { transition: transform 0.5s cubic-bezier(0.22,1,0.36,1); }
 
-  /* ── Badges ── */
   .tr-badge-gender {
     background: rgba(45,126,247,0.35);
     border: 1.5px solid rgba(45,126,247,0.75);
@@ -75,7 +73,6 @@ const topRatedStyles = `
     flex-shrink: 0;
   }
 
-  /* ── Location pill ── */
   .tr-location-row {
     display: flex !important; align-items: center !important; gap: 6px !important;
     margin: 0 0 0.65rem !important; padding: 0.32rem 0.75rem !important;
@@ -91,7 +88,6 @@ const topRatedStyles = `
     text-shadow: 0 0 10px rgba(16,185,129,0.7) !important; letter-spacing: 0.01em !important;
   }
 
-  /* ── Amenity chips ── */
   .tr-amenity-chip { border-radius: 6px; padding: 0.18rem 0.55rem; font-size: 0.68rem; font-weight: 600; white-space: nowrap; transition: transform 0.2s; }
   .tr-amenity-chip:hover { transform: scale(1.08); }
   .tr-chip-blue   { background: rgba(45,126,247,0.15);  border: 1px solid rgba(45,126,247,0.45);  color: #7ab8fc; }
@@ -101,7 +97,6 @@ const topRatedStyles = `
   .tr-chip-amber  { background: rgba(245,158,11,0.15);  border: 1px solid rgba(245,158,11,0.45);  color: #fcd34d; }
   .tr-chip-cyan   { background: rgba(6,182,212,0.15);   border: 1px solid rgba(6,182,212,0.45);   color: #67e8f9; }
 
-  /* ── Rating ── */
   .tr-rating-row { display: flex; align-items: center; gap: 6px; margin-bottom: 0.45rem; }
   .tr-rating-score {
     background: rgba(251,191,36,0.15); border: 1px solid rgba(251,191,36,0.4);
@@ -109,7 +104,6 @@ const topRatedStyles = `
     padding: 0.15rem 0.5rem; border-radius: 999px;
   }
 
-  /* ── CTA buttons ── */
   .tr-btn-outline {
     flex: 1; padding: 0.52rem; border-radius: 10px; font-size: 0.76rem; font-weight: 600;
     cursor: pointer; background: transparent; border: 1px solid rgba(45,126,247,0.35);
@@ -179,7 +173,6 @@ const Home = () => {
     fetchMapAnnexes();
   }, []);
 
-  /* ── Helpers: resolve nested property object from /quality/top-rated ── */
   const resolveProperty = (item) => item.property || item;
 
   const getRating = (item) =>
@@ -223,7 +216,6 @@ const Home = () => {
     return prop._id ?? item._id;
   };
 
-  /* ── REAL features only — no dummy fallbacks ── */
   const getFeatures = (item) => {
     const prop = resolveProperty(item);
     const feats = prop.features ?? item.features;
@@ -233,7 +225,6 @@ const Home = () => {
     return [];
   };
 
-  /* ── Real description only ── */
   const getDescription = (item) => {
     const prop = resolveProperty(item);
     return prop.description ?? item.description ?? null;
@@ -299,8 +290,13 @@ const Home = () => {
       <nav className={`fixed top-0 left-0 right-0 z-[999] transition-all duration-300 ${scrolled ? 'bg-[#0d1117]/92 backdrop-blur-lg border-b border-white/7 py-3' : 'py-[18px]'}`}>
         <div className="max-w-[1200px] mx-auto px-8 flex items-center gap-8">
           <div className="flex items-center gap-2.5 flex-shrink-0">
-            <div className="w-9 h-9 bg-blue-500 rounded-[10px] flex items-center justify-center text-lg">🏠</div>
-            <span className="font-display text-[1.3rem] font-extrabold text-[#f0f4ff]">Uni<span className="text-blue-400">NEST</span></span>
+            {/* ✅ UPDATED: Logo image replaces emoji icon */}
+            <img
+              src="/ITPM Images/ITPM.png"
+              alt="UniNEST Logo"
+              className="w-16 h-16 rounded-[56px] object-contain"
+            />
+            <span className="font-display text-[1.3rem] font-extrabold text-[#f0f4ff]">UNI<span className="text-blue-400">NEST</span></span>
           </div>
 
           <ul className="hidden md:flex gap-1 ml-auto">
@@ -434,7 +430,7 @@ const Home = () => {
         ))}
       </section>
 
-      {/* ════════════ TOP RATED — real data, Booking page card style ════════════ */}
+      {/* ════════════ TOP RATED ════════════ */}
       <section className="py-20 px-8" id="listings" style={{ background: '#050c1a' }}>
         <div className="max-w-[1200px] mx-auto">
           <div className="flex justify-between items-end mb-9 flex-wrap gap-2.5">
@@ -471,33 +467,17 @@ const Home = () => {
                 const description = getDescription(item);
 
                 return (
-                  <article
-                    key={propertyId}
-                    className="tr-card"
-                    style={{ animationDelay: `${0.05 + i * 0.1}s` }}
-                  >
-                    {/* ── Image ── */}
+                  <article key={propertyId} className="tr-card" style={{ animationDelay: `${0.05 + i * 0.1}s` }}>
                     <div style={{ position: 'relative', height: 190, overflow: 'hidden' }}>
-                      <img
-                        src={image}
-                        alt={title}
-                        className="tr-card-img"
+                      <img src={image} alt={title} className="tr-card-img"
                         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                        onError={(e) => { e.target.src = FALLBACK_IMAGE; }}
-                      />
-                      {/* dark gradient overlay */}
+                        onError={(e) => { e.target.src = FALLBACK_IMAGE; }} />
                       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 30%, rgba(5,12,26,0.8) 100%)' }} />
-
-                      {/* Gender badge */}
                       {genderVal && <span className="tr-badge-gender">{genderVal}</span>}
-
-                      {/* Available badge */}
                       <span className="tr-badge-available">
                         <span className="tr-badge-dot" />
                         Available
                       </span>
-
-                      {/* Price */}
                       {price && (
                         <span style={{ background: 'rgba(5,12,26,0.75)', border: '1px solid rgba(45,126,247,0.3)', backdropFilter: 'blur(8px)', borderRadius: 8, padding: '0.28rem 0.65rem', fontSize: '0.8rem', fontWeight: 700, color: '#7ab8fc', position: 'absolute', bottom: 12, left: 12, zIndex: 2 }}>
                           {price}
@@ -505,15 +485,10 @@ const Home = () => {
                       )}
                     </div>
 
-                    {/* ── Body ── */}
                     <div style={{ padding: '1rem 1.1rem 1.1rem' }}>
-
-                      {/* Title */}
                       <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e8eeff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: '0 0 0.5rem' }}>
                         {title}
                       </h3>
-
-                      {/* ── Rating row (only if we have a real rating) ── */}
                       {rating != null && (
                         <div className="tr-rating-row">
                           <span className="tr-rating-score">★ {typeof rating === 'number' ? rating.toFixed(1) : rating}</span>
@@ -521,8 +496,6 @@ const Home = () => {
                           <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)' }}>/ 5.0</span>
                         </div>
                       )}
-
-                      {/* ── Location green pill (only if real address exists) ── */}
                       {location && (
                         <div className="tr-location-row">
                           <svg className="tr-location-icon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
@@ -532,42 +505,22 @@ const Home = () => {
                           <span className="tr-location-text" title={location}>{location}</span>
                         </div>
                       )}
-
-                      {/* ── Real description (only if exists) ── */}
                       {description && (
                         <p style={{ fontSize: '0.76rem', color: 'rgba(255,255,255,0.42)', lineHeight: 1.65, margin: '0 0 0.85rem', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                           {description}
                         </p>
                       )}
-
-                      {/* ── Real feature chips (only if property has them) ── */}
                       {chipFeats.length > 0 && (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.9rem' }}>
                           {chipFeats.map((f, idx) => (
-                            <span
-                              key={idx}
-                              className={`tr-amenity-chip ${CHIP_CLASSES[idx % CHIP_CLASSES.length]}`}
-                            >
-                              {f}
-                            </span>
+                            <span key={idx} className={`tr-amenity-chip ${CHIP_CLASSES[idx % CHIP_CLASSES.length]}`}>{f}</span>
                           ))}
                         </div>
                       )}
-
                       <hr style={{ border: 'none', height: '1px', background: 'rgba(255,255,255,0.07)', margin: '0 0 0.9rem' }} />
-
-                      {/* ── CTA buttons — same as Booking page ── */}
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <Link to={`/annex/${propertyId}`} className="tr-btn-outline">
-                          View Details
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => handleBookNow(item)}
-                          className="tr-btn-glow"
-                        >
-                          Book Now →
-                        </button>
+                        <Link to={`/annex/${propertyId}`} className="tr-btn-outline">View Details</Link>
+                        <button type="button" onClick={() => handleBookNow(item)} className="tr-btn-glow">Book Now →</button>
                       </div>
                     </div>
                   </article>
@@ -613,8 +566,13 @@ const Home = () => {
         <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1.5fr] gap-12 pb-12 border-b border-white/7">
           <div>
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 bg-blue-500 rounded-[10px] flex items-center justify-center text-lg">🏠</div>
-              <span className="font-display text-[1.3rem] font-extrabold text-[#f0f4ff]">Uni<span className="text-blue-400">NEST</span></span>
+              {/* ✅ UPDATED: Logo image replaces emoji icon */}
+              <img
+                src="/ITPM Images/ITPM.png"
+                alt="UniNEST Logo"
+                className="w-36 h-36 rounded-[18px] object-contain"
+              />
+              <span className="font-display text-[1.3rem] font-extrabold text-[#f0f4ff]">UNI<span className="text-blue-400">NEST</span></span>
             </div>
             <p className="text-[#5a6478] text-sm leading-[1.6] mb-5 max-w-[280px]">The ultimate destination for student housing. Find, book, and live in the best annexes and hostels across the country.</p>
             <div className="flex gap-2.5">

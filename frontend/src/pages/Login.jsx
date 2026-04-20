@@ -127,12 +127,16 @@ export default function Login() {
 
         {/* ── Logo Header ── */}
         <div className="flex flex-col items-center mb-8">
+          {/* ✅ UPDATED: UniNEST logo replaces the blue U box */}
           <div className="relative pulse-ring w-14 h-14 mb-3">
-            <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-blue-600/30" style={FONT_DISPLAY}>
-              U
-            </div>
+            <img
+              src="/ITPM Images/ITPM.png"
+              alt="UniNEST Logo"
+              style={{ width: '56px', height: '56px' }}
+              className="rounded-xl object-contain"
+            />
           </div>
-          <h1 className="text-white text-3xl font-bold tracking-tight" style={FONT_DISPLAY}>UniNEST</h1>
+          <h1 className="text-white text-3xl font-bold tracking-tight" style={FONT_DISPLAY}>UNINEST</h1>
           <p className="text-gray-500 text-xs mt-1 tracking-widest uppercase" style={FONT_BODY}>Student Housing Platform</p>
         </div>
 
@@ -247,7 +251,6 @@ export default function Login() {
         <div className={`tab-slide ${activeTab === 'admin' ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none absolute w-full max-w-md'}`}>
           <div className="bg-[#111827] border border-amber-500/25 rounded-2xl p-8 shadow-2xl">
 
-            {/* Admin header */}
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 bg-amber-500/15 border border-amber-500/35 rounded-xl flex items-center justify-center text-amber-400 text-xl">
                 🛡️
@@ -258,7 +261,6 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Security notice */}
             <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl px-4 py-3 mb-6 mt-4 flex items-start gap-2">
               <span className="text-amber-500 mt-0.5 flex-shrink-0">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

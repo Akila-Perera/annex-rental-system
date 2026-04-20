@@ -66,12 +66,12 @@ export default function AboutUs() {
   ];
 
   const milestones = [
-    { year: '2019', title: 'The Idea',         desc: 'Two university students struggled to find safe housing. They decided to build the solution they wished existed.',        yearColor: 'text-blue-400',   cardClasses: 'bg-blue-500/8 border-blue-500/20',   dotColor: 'bg-blue-400'   },
-    { year: '2020', title: 'First Launch',      desc: 'AnnexFinder launched with 12 verified listings in Colombo. Word spread fast — 500 students signed up in 30 days.',  yearColor: 'text-purple-400', cardClasses: 'bg-purple-500/8 border-purple-500/20', dotColor: 'bg-purple-400' },
-    { year: '2021', title: 'Expanded Citywide', desc: 'Grew to 5 cities and 1,200 listings. Introduced our landmark Verified Badge program trusted by students.',          yearColor: 'text-teal-400',   cardClasses: 'bg-teal-500/8 border-teal-500/20',   dotColor: 'bg-teal-400'   },
-    { year: '2022', title: 'Series A Funding',  desc: 'Raised $3.2M to build out our tech platform, verification team, and student support infrastructure.',             yearColor: 'text-orange-400', cardClasses: 'bg-orange-500/8 border-orange-500/20', dotColor: 'bg-orange-400' },
-    { year: '2023', title: '10,000 Students',   desc: 'Hit the milestone of 10,000 students successfully housed. Launched the Owner Dashboard for property managers.',    yearColor: 'text-amber-400',  cardClasses: 'bg-amber-500/8 border-amber-500/20',  dotColor: 'bg-amber-400'  },
-    { year: '2024', title: 'National Scale',    desc: 'Now operating across 50+ universities nationwide with 500+ verified listings and a 4.9-star average rating.',      yearColor: 'text-pink-400',   cardClasses: 'bg-pink-500/8 border-pink-500/20',   dotColor: 'bg-pink-400'   },
+    { year: '2019', title: 'The Idea',         desc: 'Two university students struggled to find safe housing. They decided to build the solution they wished existed.',       yearColor: 'text-blue-400',   cardClasses: 'bg-blue-500/8 border-blue-500/20',   dotColor: 'bg-blue-400'   },
+    { year: '2020', title: 'First Launch',      desc: 'AnnexFinder launched with 12 verified listings in Colombo. Word spread fast — 500 students signed up in 30 days.', yearColor: 'text-purple-400', cardClasses: 'bg-purple-500/8 border-purple-500/20', dotColor: 'bg-purple-400' },
+    { year: '2021', title: 'Expanded Citywide', desc: 'Grew to 5 cities and 1,200 listings. Introduced our landmark Verified Badge program trusted by students.',         yearColor: 'text-teal-400',   cardClasses: 'bg-teal-500/8 border-teal-500/20',   dotColor: 'bg-teal-400'   },
+    { year: '2022', title: 'Series A Funding',  desc: 'Raised $3.2M to build out our tech platform, verification team, and student support infrastructure.',            yearColor: 'text-orange-400', cardClasses: 'bg-orange-500/8 border-orange-500/20', dotColor: 'bg-orange-400' },
+    { year: '2023', title: '10,000 Students',   desc: 'Hit the milestone of 10,000 students successfully housed. Launched the Owner Dashboard for property managers.',   yearColor: 'text-amber-400',  cardClasses: 'bg-amber-500/8 border-amber-500/20',  dotColor: 'bg-amber-400'  },
+    { year: '2024', title: 'National Scale',    desc: 'Now operating across 50+ universities nationwide with 500+ verified listings and a 4.9-star average rating.',     yearColor: 'text-pink-400',   cardClasses: 'bg-pink-500/8 border-pink-500/20',   dotColor: 'bg-pink-400'   },
   ];
 
   const values = [
@@ -86,15 +86,14 @@ export default function AboutUs() {
   const partners = ['University of Colombo', 'SLIIT', 'NSBM', 'Moratuwa University', 'Eastern University', 'Kelaniya University'];
 
   const testimonials = [
-    { name: 'Nisha K.',    uni: 'University of Colombo', text: 'I found my room in under a week. The verified badge gave me complete peace of mind — no scams, no surprises.',                                                           emoji: '👩‍🎓', colorClasses: 'bg-blue-500/6 border-blue-500/18',   quoteColor: 'text-blue-400'   },
-    { name: 'Rajan M.',   uni: 'SLIIT',                  text: 'The support team responded within minutes when I had an issue. Never felt alone through the whole process.',                                                            emoji: '👨‍💻', colorClasses: 'bg-purple-500/6 border-purple-500/18', quoteColor: 'text-purple-400' },
-    { name: 'Thilini S.', uni: 'Moratuwa University',    text: "As a female student moving cities, safety was everything. AnnexFinder's female-only filter and verification made all the difference.", emoji: '👩‍🔬', colorClasses: 'bg-teal-500/6 border-teal-500/18',   quoteColor: 'text-teal-400'   },
+    { name: 'Nisha K.',   uni: 'University of Colombo', text: 'I found my room in under a week. The verified badge gave me complete peace of mind — no scams, no surprises.',                                                        emoji: '👩‍🎓', colorClasses: 'bg-blue-500/6 border-blue-500/18',   quoteColor: 'text-blue-400'   },
+    { name: 'Rajan M.',   uni: 'SLIIT',                 text: 'The support team responded within minutes when I had an issue. Never felt alone through the whole process.',                                                         emoji: '👨‍💻', colorClasses: 'bg-purple-500/6 border-purple-500/18', quoteColor: 'text-purple-400' },
+    { name: 'Thilini S.', uni: 'Moratuwa University',   text: "As a female student moving cities, safety was everything. AnnexFinder's female-only filter and verification made all the difference.", emoji: '👩‍🔬', colorClasses: 'bg-teal-500/6 border-teal-500/18',   quoteColor: 'text-teal-400'   },
   ];
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#f0f4ff] font-sans overflow-x-hidden">
 
-      {/* ── Custom styles for things Tailwind can't do inline ── */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
         .font-display { font-family: 'Syne', sans-serif; }
@@ -121,7 +120,6 @@ export default function AboutUs() {
         .animate-marquee:hover{ animation-play-state: paused; }
 
         .particle { animation: particleDrift calc(4s + var(--i) * 0.6s) ease-in-out infinite; animation-delay: calc(var(--i) * 0.3s); }
-
         .marquee-mask { mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent); }
 
         .hero-glow-bg { background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(45,126,247,0.13) 0%, transparent 70%); }
@@ -132,11 +130,17 @@ export default function AboutUs() {
         .hero-highlight{ color: #2d7ef7; text-shadow: 0 0 50px rgba(45,126,247,0.5); }
       `}</style>
 
-      {/* ════════════════════════ NAVBAR ════════════════════════ */}
+      {/* ════════════ NAVBAR ════════════ */}
       <nav className={`fixed top-0 left-0 right-0 z-[999] transition-all duration-300 ${scrolled ? 'bg-[#0d1117]/92 backdrop-blur-lg border-b border-white/7 py-3' : 'py-[18px]'}`}>
         <div className="max-w-[1200px] mx-auto px-8 flex items-center gap-8">
           <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="w-9 h-9 bg-blue-500 rounded-[10px] flex items-center justify-center text-lg">🏠</div>
+            {/* ✅ UPDATED: Same logo as Home page */}
+            <img
+              src="/ITPM Images/ITPM.png"
+              alt="UniNEST Logo"
+              style={{ width: '38px', height: '38px' }}
+              className="rounded-[10px] object-contain"
+            />
             <span className="font-display text-[1.3rem] font-extrabold text-[#f0f4ff]">UNI<span className="text-blue-400">NEST</span></span>
           </div>
           <ul className="hidden md:flex gap-1 ml-auto">
@@ -145,17 +149,15 @@ export default function AboutUs() {
             ))}
           </ul>
           <div className="hidden md:flex gap-2.5 items-center">
-            <button onClick={() => navigate('/')}    className="px-5 py-2 rounded-lg text-[#8a96b0] text-sm bg-transparent cursor-pointer hover:text-[#f0f4ff] transition-all duration-300">Home</button>
+            <button onClick={() => navigate('/')}       className="px-5 py-2 rounded-lg text-[#8a96b0] text-sm bg-transparent cursor-pointer hover:text-[#f0f4ff] transition-all duration-300">Home</button>
             <button onClick={() => navigate('/support')} className="px-5 py-2 rounded-lg bg-blue-500 text-white text-sm font-medium cursor-pointer hover:bg-blue-400 hover:-translate-y-px hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-300">Contact Us</button>
           </div>
         </div>
       </nav>
 
-      {/* ════════════════════════ HERO ════════════════════════ */}
+      {/* ════════════ HERO ════════════ */}
       <section className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center px-8 pt-[120px] pb-20 text-center hero-glow-bg">
-        {/* Glow orb */}
         <div className="absolute -top-[200px] left-1/2 -translate-x-1/2 w-[900px] h-[700px] rounded-full hero-glow-orb animate-pulse-glow pointer-events-none" />
-        {/* Particles */}
         <div className="absolute inset-0 pointer-events-none">
           {[...Array(12)].map((_, i) => (
             <div key={i} className="absolute rounded-full particle"
@@ -189,7 +191,7 @@ export default function AboutUs() {
         </div>
       </section>
 
-      {/* ════════════════════════ STATS ════════════════════════ */}
+      {/* ════════════ STATS ════════════ */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5 max-w-[1200px] mx-auto px-8 pb-20">
         {[
           { target: 10000, suffix: '+', label: 'Students Housed',      numColor: 'text-blue-400',   labelColor: 'text-blue-300',   bg: 'bg-blue-500/8 border-blue-500/20'   },
@@ -204,7 +206,7 @@ export default function AboutUs() {
         ))}
       </div>
 
-      {/* ════════════════════════ MISSION ════════════════════════ */}
+      {/* ════════════ MISSION ════════════ */}
       <section className="py-20 bg-[#161b25] border-t border-b border-white/7" id="mission">
         <div className="max-w-[1200px] mx-auto px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-[60px] items-center">
@@ -224,9 +226,9 @@ export default function AboutUs() {
             <Reveal delay={150}>
               <div className="relative flex flex-col gap-4">
                 {[
-                  { icon: '✅', title: 'Verified Property',  sub: 'Inspected on-site by our team',   border: 'border-l-blue-500',   anim: 'animate-float-1' },
-                  { icon: '⭐', title: 'Rated 4.9 / 5.0',   sub: 'By 10,000+ real students',         border: 'border-l-purple-500', anim: 'animate-float-2', ml: 'ml-5' },
-                  { icon: '🛡️', title: 'Safety Guaranteed', sub: 'Zero-compromise standards',        border: 'border-l-teal-500',   anim: 'animate-float-3' },
+                  { icon: '✅', title: 'Verified Property',  sub: 'Inspected on-site by our team',  border: 'border-l-blue-500',   anim: 'animate-float-1' },
+                  { icon: '⭐', title: 'Rated 4.9 / 5.0',   sub: 'By 10,000+ real students',        border: 'border-l-purple-500', anim: 'animate-float-2', ml: 'ml-5' },
+                  { icon: '🛡️', title: 'Safety Guaranteed', sub: 'Zero-compromise standards',       border: 'border-l-teal-500',   anim: 'animate-float-3' },
                 ].map(({ icon, title, sub, border, anim, ml }) => (
                   <div key={title} className={`bg-[#1a2030] border border-white/7 ${border} border-l-[3px] rounded-[14px] p-4 flex items-center gap-4 ${anim} ${ml || ''} hover:translate-x-1.5 hover:border-blue-500/30 transition-all duration-300`}>
                     <span className="text-2xl flex-shrink-0">{icon}</span>
@@ -243,7 +245,7 @@ export default function AboutUs() {
         </div>
       </section>
 
-      {/* ════════════════════════ VALUES ════════════════════════ */}
+      {/* ════════════ VALUES ════════════ */}
       <section className="py-20">
         <div className="max-w-[1200px] mx-auto px-8">
           <Reveal className="text-center mb-12">
@@ -263,7 +265,7 @@ export default function AboutUs() {
         </div>
       </section>
 
-      {/* ════════════════════════ TIMELINE ════════════════════════ */}
+      {/* ════════════ TIMELINE ════════════ */}
       <section className="py-20 bg-[#161b25] border-t border-b border-white/7" id="timeline">
         <div className="max-w-[1200px] mx-auto px-8">
           <Reveal className="text-center mb-12">
@@ -272,7 +274,6 @@ export default function AboutUs() {
             <p className="text-[#8a96b0] text-sm max-w-[560px] mx-auto leading-[1.7]">From a frustrated idea in a university dorm to Sri Lanka's most trusted student housing platform.</p>
           </Reveal>
           <div className="relative pt-5">
-            {/* Center line — hidden on mobile */}
             <div className="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2 timeline-line hidden md:block" />
             {milestones.map((m, i) => (
               <Reveal key={m.year} className={`flex items-center mb-10 relative ${i % 2 === 0 ? 'md:flex-row-reverse md:pr-[calc(50%+36px)]' : 'md:flex-row md:pl-[calc(50%+36px)]'}`} delay={i * 100}>
@@ -288,7 +289,7 @@ export default function AboutUs() {
         </div>
       </section>
 
-      {/* ════════════════════════ TEAM ════════════════════════ */}
+      {/* ════════════ TEAM ════════════ */}
       <section className="py-20" id="team">
         <div className="max-w-[1200px] mx-auto px-8">
           <Reveal className="text-center mb-12">
@@ -309,7 +310,7 @@ export default function AboutUs() {
         </div>
       </section>
 
-      {/* ════════════════════════ PARTNERS ════════════════════════ */}
+      {/* ════════════ PARTNERS ════════════ */}
       <section className="py-20 bg-[#161b25] border-t border-b border-white/7">
         <div className="max-w-[1200px] mx-auto px-8">
           <Reveal className="text-center">
@@ -326,7 +327,7 @@ export default function AboutUs() {
         </div>
       </section>
 
-      {/* ════════════════════════ TESTIMONIALS ════════════════════════ */}
+      {/* ════════════ TESTIMONIALS ════════════ */}
       <section className="py-20">
         <div className="max-w-[1200px] mx-auto px-8">
           <Reveal className="text-center mb-12">
@@ -351,7 +352,7 @@ export default function AboutUs() {
         </div>
       </section>
 
-      {/* ════════════════════════ CTA BANNER ════════════════════════ */}
+      {/* ════════════ CTA BANNER ════════════ */}
       <section className="py-24 px-8 text-center relative overflow-hidden bg-[#161b25] border-t border-b border-white/7">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] cta-glow-orb animate-pulse-glow pointer-events-none" />
         <Reveal className="relative z-10">
@@ -364,13 +365,18 @@ export default function AboutUs() {
         </Reveal>
       </section>
 
-      {/* ════════════════════════ FOOTER ════════════════════════ */}
+      {/* ════════════ FOOTER ════════════ */}
       <footer className="bg-[#161b25] px-8 pt-[60px]">
         <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1.5fr] gap-12 pb-12 border-b border-white/7">
           <div>
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 bg-blue-500 rounded-[10px] flex items-center justify-content-center text-lg">🏠</div>
-              <span className="font-display text-[1.3rem] font-extrabold text-[#f0f4ff]">Annex<span className="text-blue-400">Finder</span></span>
+              {/* ✅ UPDATED: Same logo as Home page */}
+              <img
+                src="/ITPM Images/ITPM.png"
+                alt="UniNEST Logo"
+                className="w-36 h-36 rounded-[10px] object-contain"
+              />
+              <span className="font-display text-[1.3rem] font-extrabold text-[#f0f4ff]">UNI<span className="text-blue-400">NEST</span></span>
             </div>
             <p className="text-[#5a6478] text-sm leading-[1.6] mb-5 max-w-[280px]">The ultimate destination for student housing across the country.</p>
             <div className="flex gap-2.5">
@@ -380,7 +386,7 @@ export default function AboutUs() {
             </div>
           </div>
           {[
-            { title: 'Explore', links: [['/', 'Find a Room'], ['#timeline', 'Our Story'], ['#team', 'Meet the Team'], ['#mission', 'Mission']] },
+            { title: 'Explore',    links: [['/', 'Find a Room'], ['#timeline', 'Our Story'], ['#team', 'Meet the Team'], ['#mission', 'Mission']] },
             { title: 'For Owners', links: [['#list', 'List your property'], ['#dashboard', 'Owner Dashboard'], ['#safety', 'Safety Standards'], ['#pricing', 'Pricing Plans']] },
           ].map(({ title, links }) => (
             <div key={title}>
