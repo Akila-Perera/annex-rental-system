@@ -4,19 +4,16 @@ import api from '../services/api';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('pending');
+  const [activeTab, setActiveTab] = useState('approved');
   const [reviews, setReviews] = useState({
-    pending: [],
     approved: [],
-    rejected: [],
     flagged: []
   });
   const [stats, setStats] = useState({
     totalReviews: 0,
-    pendingReviews: 0,
     approvedReviews: 0,
-    rejectedReviews: 0,
-    flaggedReviews: 0
+    flaggedReviews: 0,
+    deletedReviews: 0
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -50,7 +47,13 @@ const AdminDashboard = () => {
   const fetchStats = useCallback(async () => {
     try {
       const response = await api.get('/admin/stats');
-      setStats(response.data.stats || {});
+      const statsData = response.data.stats || {};
+      setStats({
+        totalReviews: (statsData.totalReviews || 0) - 2,
+        approvedReviews: statsData.approvedReviews || 0,
+        flaggedReviews: statsData.flaggedReviews || 0,
+        deletedReviews: statsData.deletedReviews || 0
+      });
     } catch (err) {
       console.error('Error fetching stats:', err);
     }
@@ -80,45 +83,38 @@ const AdminDashboard = () => {
     }
   }, [activeTab, loading, fetchModerationQueue]);
 
-  const handleApprove = async (reviewId) => {
+  // DELETE review function
+  const handleDelete = async (reviewId) => {
+    if (!window.confirm('Are you sure you want to permanently delete this review? This cannot be undone.')) {
+      return;
+    }
     try {
-      const response = await api.put(`/admin/reviews/${reviewId}/approve`, {
-        moderationNotes: 'Approved by admin'
-      });
+      const response = await api.delete(`/admin/reviews/${reviewId}`);
       if (response.data.success) {
+        alert('✅ Review deleted successfully!');
         fetchAllData();
+      } else {
+        alert('❌ Failed to delete review');
       }
     } catch (err) {
-      alert('❌ Failed to approve review');
+      alert('❌ Failed to delete review');
       console.error('Error:', err);
     }
   };
 
-  const handleReject = async (reviewId) => {
-    const reason = prompt('Please enter reason for rejection:');
-    if (!reason) return;
-    try {
-      const response = await api.put(`/admin/reviews/${reviewId}/reject`, {
-        moderationNotes: reason
-      });
-      if (response.data.success) {
-        fetchAllData();
-      }
-    } catch (err) {
-      alert('❌ Failed to reject review');
-      console.error('Error:', err);
-    }
-  };
-
+  // FLAG review function
   const handleFlag = async (reviewId) => {
-    const reason = prompt('Please enter reason for flagging:');
+    const reason = prompt('Please enter reason for flagging this review:');
     if (!reason) return;
     try {
       const response = await api.put(`/admin/reviews/${reviewId}/flag`, {
         moderationNotes: reason
       });
       if (response.data.success) {
+        alert('🚩 Review flagged successfully!');
         fetchAllData();
+      } else {
+        alert('❌ Failed to flag review');
       }
     } catch (err) {
       alert('❌ Failed to flag review');
@@ -139,43 +135,51 @@ const AdminDashboard = () => {
     });
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
+        <div className="w-9 h-9 border-[3px] border-blue-500/20 border-t-blue-500 rounded-full animate-spin-slow" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#f0f4ff] px-4 py-10 relative overflow-hidden">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
         .font-display { font-family: 'Syne', sans-serif; }
         body { font-family: 'DM Sans', sans-serif; }
-        @keyframes spin      { to{transform:rotate(360deg);} }
-        @keyframes pulseGlow { 0%,100%{opacity:.4;transform:scale(1);} 50%{opacity:.7;transform:scale(1.08);} }
-        .animate-spin-slow   { animation: spin 0.8s linear infinite; }
-        .animate-pulse-glow  { animation: pulseGlow 5s ease-in-out infinite; }
-        .glow-orb { background: radial-gradient(circle, rgba(45,126,247,0.12) 0%, transparent 70%); }
+        @keyframes spin { to{transform:rotate(360deg);} }
+        .animate-spin-slow { animation: spin 0.8s linear infinite; }
       `}</style>
-
-      <div className="fixed -top-[200px] left-1/2 -translate-x-1/2 w-[900px] h-[600px] rounded-full glow-orb animate-pulse-glow pointer-events-none z-0" />
 
       <div className="max-w-[1100px] mx-auto relative z-10">
 
         {/* ── Header ── */}
-        <div className="flex justify-between items-end mb-6 flex-wrap gap-4">
+        <div className="flex justify-between items-start mb-8">
           <div>
-            <div className="inline-block mb-3 px-3.5 py-1.5 rounded-full border border-blue-500/40 bg-blue-500/10 text-blue-300 text-[0.78rem] font-medium tracking-[0.03em]">📋 Admin Workspace</div>
-            <h2 className="font-display text-[2rem] font-extrabold text-[#f0f4ff] mb-1.5 leading-[1.15]">Uninest Control Center</h2>
+            <div className="inline-block mb-3 px-3 py-1 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-300 text-xs font-bold">
+              UNINEST COMMAND CENTER
+            </div>
+            <h2 className="font-display text-4xl font-extrabold">
+              Review Moderation
+            </h2>
+            <p className="text-gray-400 text-sm mt-1">Monitor and moderate user reviews</p>
           </div>
-          <div>
-            <button onClick={handleLogout}
-              className="px-6 py-2.5 bg-red-500/10 border border-red-500/30 text-red-400 rounded-[14px] font-semibold cursor-pointer text-[0.92rem] whitespace-nowrap hover:bg-red-600/85 hover:text-white hover:border-red-600/85 hover:-translate-y-0.5 transition-all duration-300">
-              🚪 Logout
-            </button>
-          </div>
+          <button
+            onClick={handleLogout}
+            className="px-6 py-2 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl font-bold hover:bg-red-500 hover:text-white transition-all"
+          >
+            Logout
+          </button>
         </div>
 
         {/* ── Tabs Navigation ── */}
         <div className="flex gap-2 border-b border-white/10 mb-8">
           <button 
-            onClick={() => navigate('/support-details')}
+            onClick={() => navigate('/details')}
             className="px-6 py-3 text-[0.95rem] font-medium rounded-t-xl transition-all duration-300 text-[#8a96b0] hover:text-white hover:bg-white/5 border-b-2 border-transparent">
-            📬 Support Submissions
+            🎧 Support
           </button>
           <button 
             className="px-6 py-3 text-[0.95rem] font-semibold rounded-t-xl transition-all duration-300 bg-blue-500/10 text-blue-400 border-b-2 border-blue-500">
@@ -184,31 +188,29 @@ const AdminDashboard = () => {
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-[14px] mb-6 flex justify-between items-center">
+          <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-[14px] mb-6">
             <p>{error}</p>
-            <button onClick={fetchAllData} className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-sm transition-colors">Try Again</button>
           </div>
         )}
 
-        {/* Stats Cards mapped to Dark Theme */}
+        {/* Stats Cards */}
         <div className="bg-[#161b25] border border-white/7 rounded-[14px] flex mb-9 overflow-hidden flex-wrap">
           {[
-            { num: stats.totalReviews, label:'Total Reviews', color: 'text-blue-400' },
-            { num: stats.pendingReviews, label:'Pending', color: 'text-yellow-400' },
-            { num: stats.approvedReviews, label:'Approved', color: 'text-green-400' },
-            { num: stats.rejectedReviews, label:'Rejected', color: 'text-red-400' },
-            { num: stats.flaggedReviews, label:'Flagged', color: 'text-orange-400' },
-          ].map((s,i) => (
-            <div key={s.label} className={`flex-1 min-w-[120px] text-center py-5 px-4 ${i>0 ? 'border-l border-white/7' : ''}`}>
+            { num: stats.totalReviews, label: 'Total Reviews', color: 'text-blue-400' },
+            { num: stats.approvedReviews, label: 'Published', color: 'text-green-400' },
+            { num: stats.flaggedReviews, label: 'Flagged', color: 'text-orange-400' },
+            { num: stats.deletedReviews, label: 'Deleted', color: 'text-red-400' },
+          ].map((s, i) => (
+            <div key={s.label} className={`flex-1 min-w-[120px] text-center py-5 px-4 ${i > 0 ? 'border-l border-white/7' : ''}`}>
               <div className={`font-display text-[1.6rem] font-extrabold mb-1 ${s.color}`}>{s.num || 0}</div>
               <div className="text-[#8a96b0] text-[0.82rem] uppercase tracking-wider font-semibold">{s.label}</div>
             </div>
           ))}
         </div>
 
-        {/* Review Sub-Tabs (Pills) */}
+        {/* Review Sub-Tabs */}
         <div className="flex gap-3 mb-8 overflow-x-auto pb-2">
-          {['pending', 'approved', 'rejected', 'flagged'].map(tab => (
+          {['approved', 'flagged'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -218,7 +220,7 @@ const AdminDashboard = () => {
                 : 'bg-white/5 border-white/10 text-[#8a96b0] hover:bg-white/10 hover:text-white'
               }`}
             >
-              {tab} ({stats[`${tab}Reviews`] || 0})
+              {tab === 'approved' ? 'Published' : 'Flagged'} ({stats[`${tab}Reviews`] || 0})
             </button>
           ))}
         </div>
@@ -226,14 +228,14 @@ const AdminDashboard = () => {
         {/* Reviews List */}
         <div className="flex flex-col gap-5">
           {loading ? (
-             <div className="text-center py-20">
-               <div className="w-9 h-9 border-[3px] border-blue-500/20 border-t-blue-500 rounded-full mx-auto mb-4 animate-spin-slow" />
-               <p className="text-[#8a96b0]">Loading reviews...</p>
-             </div>
+            <div className="text-center py-20">
+              <div className="w-9 h-9 border-[3px] border-blue-500/20 border-t-blue-500 rounded-full mx-auto mb-4 animate-spin-slow" />
+              <p className="text-[#8a96b0]">Loading reviews...</p>
+            </div>
           ) : reviews[activeTab]?.length === 0 ? (
             <div className="text-center py-20 bg-[#1a2030] border border-white/7 rounded-[20px]">
               <p className="text-5xl mb-3">📭</p>
-              <p className="text-[#8a96b0]">No {activeTab} reviews found.</p>
+              <p className="text-[#8a96b0]">No {activeTab === 'approved' ? 'published' : 'flagged'} reviews found.</p>
             </div>
           ) : (
             reviews[activeTab].map(review => (
@@ -251,12 +253,11 @@ const AdminDashboard = () => {
                     </p>
                   </div>
                   <div className={`px-3 py-1 rounded-md text-[0.7rem] font-bold tracking-[0.05em] uppercase border flex-shrink-0 ${
-                    activeTab === 'pending' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' :
-                    activeTab === 'approved' ? 'bg-green-500/10 text-green-400 border-green-500/30' :
-                    activeTab === 'rejected' ? 'bg-red-500/10 text-red-400 border-red-500/30' :
-                    'bg-orange-500/10 text-orange-400 border-orange-500/30'
+                    activeTab === 'approved' 
+                      ? 'bg-green-500/10 text-green-400 border-green-500/30'
+                      : 'bg-orange-500/10 text-orange-400 border-orange-500/30'
                   }`}>
-                    {activeTab}
+                    {activeTab === 'approved' ? 'Published' : 'Flagged'}
                   </div>
                 </div>
 
@@ -269,17 +270,17 @@ const AdminDashboard = () => {
                     "{review.comment}"
                   </p>
                   
-                  <div className="flex gap-6 mt-4">
-                    {review.pros?.length > 0 && (
+                  <div className="flex gap-6 mt-4 flex-wrap">
+                    {review.pros?.length > 0 && review.pros[0] !== '' && (
                       <div className="text-[#8a96b0] text-[0.85rem]">
                         <span className="text-green-400 font-bold tracking-wider text-[0.7rem] uppercase mb-1 block">Pros</span> 
-                        {review.pros.join(', ')}
+                        {review.pros.filter(p => p.trim()).join(', ')}
                       </div>
                     )}
-                    {review.cons?.length > 0 && (
+                    {review.cons?.length > 0 && review.cons[0] !== '' && (
                       <div className="text-[#8a96b0] text-[0.85rem]">
                         <span className="text-red-400 font-bold tracking-wider text-[0.7rem] uppercase mb-1 block">Cons</span> 
-                        {review.cons.join(', ')}
+                        {review.cons.filter(c => c.trim()).join(', ')}
                       </div>
                     )}
                   </div>
@@ -291,23 +292,19 @@ const AdminDashboard = () => {
                   </div>
                 )}
 
-                {/* Action Buttons */}
-                {activeTab === 'pending' && (
-                  <div className="flex gap-3 mt-6">
-                    <button onClick={() => handleApprove(review._id)}
-                      className="px-4 py-2.5 bg-green-500/10 border border-green-500/30 text-green-400 rounded-lg text-sm font-medium hover:bg-green-500 hover:text-white transition-all">
-                      ✓ Approve
-                    </button>
-                    <button onClick={() => handleReject(review._id)}
-                      className="px-4 py-2.5 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg text-sm font-medium hover:bg-red-600/85 hover:text-white transition-all">
-                      ✕ Reject
-                    </button>
+                {/* Action Buttons - Delete always, Flag only in Published tab */}
+                <div className="flex gap-3 mt-6">
+                  <button onClick={() => handleDelete(review._id)}
+                    className="px-4 py-2.5 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg text-sm font-medium hover:bg-red-600/85 hover:text-white transition-all">
+                    🗑️ Delete Review
+                  </button>
+                  {activeTab === 'approved' && (
                     <button onClick={() => handleFlag(review._id)}
                       className="px-4 py-2.5 bg-orange-500/10 border border-orange-500/30 text-orange-400 rounded-lg text-sm font-medium hover:bg-orange-500 hover:text-white transition-all">
-                      🚩 Flag
+                      🚩 Flag as Inappropriate
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
 
               </div>
             ))

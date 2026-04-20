@@ -66,7 +66,7 @@ export const createReview = async (req, res) => {
       cons: cons || [],
       photos: photos || [],
       isVerified: isVerified,
-      status: 'pending'  // Always pending for admin approval
+      status: 'approved'  // Auto-approved, no admin needed
     });
 
     await review.save();

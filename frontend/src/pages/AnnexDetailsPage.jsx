@@ -104,6 +104,7 @@ const WriteReviewModal = ({ propertyId, propertyTitle, onClose, onSuccess }) => 
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [aiEnhancing, setAiEnhancing] = useState(false); // ✅ ADDED
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -220,6 +221,37 @@ const WriteReviewModal = ({ propertyId, propertyTitle, onClose, onSuccess }) => 
     }
   };
 
+  // ✅ AI ENHANCEMENT FUNCTION
+  const handleAIEnhance = async () => {
+    if (!formData.comment.trim()) {
+      alert('Please write something before enhancing.');
+      return;
+    }
+
+    setAiEnhancing(true);
+    
+    try {
+      const response = await api.post('/ai/enhance-review', {
+        reviewText: formData.comment
+      });
+      
+      if (response.data.success) {
+        setFormData(prev => ({
+          ...prev,
+          comment: response.data.enhancedText
+        }));
+        alert('✨ Review enhanced successfully!');
+      } else {
+        alert('Failed to enhance review. Please try again.');
+      }
+    } catch (error) {
+      console.error('AI Enhancement error:', error);
+      alert('AI service temporarily unavailable. Please try again later.');
+    } finally {
+      setAiEnhancing(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -250,7 +282,7 @@ const WriteReviewModal = ({ propertyId, propertyTitle, onClose, onSuccess }) => 
       const response = await api.post('/reviews', reviewData);
       
       if (response.data.success) {
-        alert('✅ Review submitted! Waiting for admin approval.');
+        alert('✅ Review submitted successfully! It will appear immediately.');
         if (onSuccess) onSuccess();
         onClose();
       } else {
@@ -331,8 +363,19 @@ const WriteReviewModal = ({ propertyId, propertyTitle, onClose, onSuccess }) => 
             {errors.title && <p className="text-red-400 text-xs mt-1">{errors.title}</p>}
           </div>
 
+          {/* ✅ UPDATED COMMENT SECTION WITH AI BUTTON */}
           <div className="mb-4">
-            <label className="text-gray-400 text-xs block mb-1">Your Review *</label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="text-gray-400 text-xs block">Your Review *</label>
+              <button
+                type="button"
+                onClick={handleAIEnhance}
+                disabled={aiEnhancing || !formData.comment.trim()}
+                className="text-xs bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 px-2 py-1 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {aiEnhancing ? '⏳ Enhancing...' : '✨ Enhance with AI'}
+              </button>
+            </div>
             <textarea
               name="comment"
               value={formData.comment}
@@ -837,7 +880,6 @@ export default function AnnexDetailsPage() {
                           <div className="text-yellow-400 text-sm">
                             {renderStars(review.ratings?.overall || 0)}
                           </div>
-                          {/* Delete button - only show if user owns this review */}
                           {user && review.student?._id === user.id && (
                             <button
                               onClick={() => handleDeleteReview(review._id)}

@@ -306,8 +306,9 @@ function SupportDetails() {
               </span>
             )}
           </button>
+          {/* UPDATED: Reviews tab now navigates to your admin dashboard */}
           <button
-            onClick={() => setActiveTab('reviews')}
+            onClick={() => navigate('/admin')}
             className={`px-8 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'reviews' ? 'bg-purple-600 shadow-lg shadow-purple-600/30' : 'text-[#8a96b0] hover:bg-white/5'}`}
           >
             ⭐ Reviews
@@ -564,7 +565,7 @@ function SupportDetails() {
         )}
 
         {/* ══════════════════════════════════════
-            REVIEWS TAB
+            REVIEWS TAB CONTENT - REMOVED (redirects to /admin)
         ══════════════════════════════════════ */}
         {activeTab === 'reviews' && (
           <div>
