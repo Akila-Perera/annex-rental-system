@@ -763,6 +763,8 @@ export default function AnnexDetailsPage() {
               {[
                 { icon: '🎓', label: 'LISTING TYPE', value: listingType },
                 { icon: '🚻', label: 'OCCUPANCY', value: annex.preferredGender || 'Any Gender' },
+                { icon: '🏠', label: 'NUMBER OF ROOMS', value: annex.roomCount || '1' },
+                { icon: '👥', label: 'CAPACITY', value: `${annex.studentsPerRoom || '1'} Student(s) per room` },
                 { icon: '🔒', label: 'FEATURES', value: `${annex.features?.length || 0} available` },
                 { icon: '🧹', label: 'RULES', value: `${annex.rulesAndConditions?.length || 0} listed` },
               ].map((s) => (
