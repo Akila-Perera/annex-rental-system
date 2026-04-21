@@ -7,8 +7,22 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import axios from 'axios';
 
 const API_BASE = 'http://localhost:5000';
-const sliitLocation = { lat: 6.9147, lng: 79.9723 };
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&q=80';
+
+/** Major Sri Lankan universities / campuses (map + default search anchor). */
+const UNIVERSITIES = [
+  { Name: 'SLIIT Malabe', Lat: 6.9147, Lng: 79.9723 },
+  { Name: 'University of Moratuwa', Lat: 6.7953, Lng: 79.9011 },
+  { Name: 'University of Peradeniya', Lat: 7.2546, Lng: 80.5974 },
+  { Name: 'University of Colombo', Lat: 6.902, Lng: 79.8587 },
+  { Name: 'University of Kelaniya', Lat: 6.9765, Lng: 79.9176 },
+  { Name: 'University of Sri Jayewardenepura', Lat: 6.8881, Lng: 79.8885 },
+  { Name: 'NIBM', Lat: 6.8878, Lng: 79.8964 },
+  { Name: 'KIU University', Lat: 6.90787, Lng: 79.928689 },
+  { Name: 'NSBM', Lat: 6.8214, Lng: 80.0398 },
+];
+
+const DEFAULT_CAMPUS = UNIVERSITIES[0];
 
 /* ── Inline styles for top-rated cards (matches AnnexBookingPage exactly) ── */
 const topRatedStyles = `
@@ -131,6 +145,11 @@ const Home = () => {
   const [topListings, setTopListings] = useState([]);
   const [loadingTop, setLoadingTop] = useState(true);
   const [mapAnnexes, setMapAnnexes] = useState([]);
+  const [viewState, setViewState] = useState({
+    longitude: DEFAULT_CAMPUS.Lng,
+    latitude: DEFAULT_CAMPUS.Lat,
+    zoom: 12.5,
+  });
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -163,7 +182,7 @@ const Home = () => {
     const fetchMapAnnexes = async () => {
       try {
         const res = await axios.get(
-          `${API_BASE}/api/annexes/search?lat=${sliitLocation.lat}&lng=${sliitLocation.lng}&maxDistance=15000`
+          `${API_BASE}/api/annexes/search?lat=${DEFAULT_CAMPUS.Lat}&lng=${DEFAULT_CAMPUS.Lng}&maxDistance=15000`
         );
         setMapAnnexes(Array.isArray(res.data?.data) ? res.data.data : []);
       } catch (err) {
@@ -387,13 +406,33 @@ const Home = () => {
               <div className="h-[250px] sm:h-[290px] md:h-[320px] w-full">
                 <Map
                   mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
-                  initialViewState={{ longitude: sliitLocation.lng, latitude: sliitLocation.lat, zoom: 12.5 }}
+                  {...viewState}
+                  onMove={(e) => setViewState(e.viewState)}
                   mapStyle="mapbox://styles/mapbox/dark-v11"
                   style={{ width: '100%', height: '100%' }}
                 >
-                  <Marker longitude={sliitLocation.lng} latitude={sliitLocation.lat}>
-                    <div className="w-8 h-8 rounded-full bg-red-600 border-2 border-white shadow-lg flex items-center justify-center text-white text-xs">🎓</div>
-                  </Marker>
+                  {UNIVERSITIES.map((uni) => (
+                    <Marker key={uni.Name} longitude={uni.Lng} latitude={uni.Lat}>
+                      <div className="relative flex flex-col items-center">
+                        <div
+                          className={`flex items-center justify-center rounded-full border-2 border-white shadow-lg text-xs ${
+                            uni.Name === DEFAULT_CAMPUS.Name
+                              ? 'w-8 h-8 bg-red-600 text-white'
+                              : 'w-7 h-7 bg-[#0b1628] text-[#6b84c9] border-[#1f3058]'
+                          }`}
+                        >
+                          🎓
+                        </div>
+                        <div
+                          className="absolute max-w-[140px] truncate rounded bg-black/70 px-1.5 py-0.5 text-center text-[8px] font-bold text-white"
+                          style={{ bottom: -18 }}
+                          title={uni.Name}
+                        >
+                          {uni.Name}
+                        </div>
+                      </div>
+                    </Marker>
+                  ))}
                   {mapAnnexes.map((annex) => (
                     <Marker key={annex._id} longitude={annex.location.coordinates[0]} latitude={annex.location.coordinates[1]}>
                       <div className="px-2 py-1 rounded-full border border-[#1f3058] bg-[#0b1628] text-blue-300 text-[10px] font-semibold whitespace-nowrap">
