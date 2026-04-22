@@ -1,5 +1,35 @@
+import mongoose from 'mongoose';
 import Booking from '../models/Booking.js';
 import Annex from '../models/Annex.js';
+
+const parsePositiveInt = (value, fallback = 0) => {
+  const parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed < 0) return fallback;
+  return parsed;
+};
+
+const getAnnexCapacity = (annex) => {
+  const roomCount = parsePositiveInt(annex.roomCount, 1);
+  const studentsPerRoom = parsePositiveInt(annex.studentsPerRoom, 1);
+  return roomCount * studentsPerRoom;
+};
+
+const getOverlappingConfirmedBookingsFilter = (annexId, checkInDate, checkOutDate) => ({
+  annex: annexId,
+  status: 'confirmed',
+  checkInDate: { $lt: checkOutDate },
+  checkOutDate: { $gt: checkInDate },
+});
+
+const getCurrentConfirmedBookingsFilter = (annexId) => {
+  const now = new Date();
+  return {
+    annex: annexId,
+    status: 'confirmed',
+    checkInDate: { $lte: now },
+    checkOutDate: { $gt: now },
+  };
+};
 
 export const createBooking = async (req, res) => {
   try {
@@ -18,6 +48,35 @@ export const createBooking = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Annex not found',
+      });
+    }
+
+    const requestedCheckIn = new Date(checkInDate);
+    const requestedCheckOut = new Date(checkOutDate);
+
+    if (Number.isNaN(requestedCheckIn.getTime()) || Number.isNaN(requestedCheckOut.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: 'checkInDate and checkOutDate must be valid dates',
+      });
+    }
+
+    if (requestedCheckOut <= requestedCheckIn) {
+      return res.status(400).json({
+        success: false,
+        message: 'checkOutDate must be after checkInDate',
+      });
+    }
+
+    const totalCapacity = getAnnexCapacity(annex);
+    const occupiedSlots = await Booking.countDocuments(
+      getOverlappingConfirmedBookingsFilter(propertyId, requestedCheckIn, requestedCheckOut)
+    );
+
+    if (occupiedSlots >= totalCapacity) {
+      return res.status(409).json({
+        success: false,
+        message: 'Room is full. This annex has reached maximum capacity.',
       });
     }
 
@@ -188,12 +247,102 @@ export const respondToBookingRequest = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Booking is no longer pending' });
     }
 
-    // Update booking status
-    const newStatus = response === 'accepted' ? 'confirmed' : 'cancelled';
-    booking.status = newStatus;
+    if (response === 'accepted') {
+      const session = await mongoose.startSession();
+
+      try {
+        await session.withTransaction(async () => {
+          const bookingForUpdate = await Booking.findById(bookingId).session(session);
+
+          if (!bookingForUpdate) {
+            const notFoundError = new Error('Booking not found');
+            notFoundError.statusCode = 404;
+            throw notFoundError;
+          }
+
+          const annex = await Annex.findById(bookingForUpdate.annex).session(session);
+          if (!annex) {
+            const annexError = new Error('Annex not found');
+            annexError.statusCode = 404;
+            throw annexError;
+          }
+
+          const totalCapacity = getAnnexCapacity(annex);
+          const occupiedSlots = await Booking.countDocuments(
+            getOverlappingConfirmedBookingsFilter(
+              annex._id,
+              bookingForUpdate.checkInDate,
+              bookingForUpdate.checkOutDate
+            )
+          ).session(session);
+
+          if (occupiedSlots >= totalCapacity) {
+            const capacityError = new Error('Room is full. This annex has reached maximum capacity.');
+            capacityError.statusCode = 409;
+            throw capacityError;
+          }
+
+          await Annex.updateOne(
+            { _id: annex._id },
+            { $inc: { bookingVersion: 1 } },
+            { session }
+          );
+
+          bookingForUpdate.status = 'confirmed';
+          await bookingForUpdate.save({ session });
+
+          try {
+            const Inquiry = require('../models/Inquiry.js').default || require('../models/Inquiry.js');
+            let inquiry = await Inquiry.findOne({
+              annex: annex._id,
+              student: bookingForUpdate.student,
+            }).session(session);
+
+            if (!inquiry) {
+              [inquiry] = await Inquiry.create([
+                {
+                  annex: annex._id,
+                  student: bookingForUpdate.student,
+                  owner: req.user._id,
+                  messages: [],
+                },
+              ], { session });
+            }
+
+            inquiry.messages.push({
+              sender: req.user._id,
+              senderRole: 'landlord',
+              text: `Your booking request for ${annex.title} from ${new Date(bookingForUpdate.checkInDate).toLocaleDateString()} to ${new Date(bookingForUpdate.checkOutDate).toLocaleDateString()} has been ACCEPTED! Please proceed with payment.`,
+            });
+
+            await inquiry.save({ session });
+          } catch (inquiryError) {
+            console.error('Error sending message:', inquiryError);
+          }
+        });
+      } catch (error) {
+        if (error.statusCode) {
+          return res.status(error.statusCode).json({ success: false, message: error.message });
+        }
+        throw error;
+      } finally {
+        await session.endSession();
+      }
+
+      const updatedBooking = await Booking.findById(bookingId)
+        .populate('student', 'firstName lastName email')
+        .populate('annex', 'title selectedAddress ownerId');
+
+      return res.json({
+        success: true,
+        message: `Booking request ${response}.`,
+        booking: updatedBooking,
+      });
+    }
+
+    booking.status = 'cancelled';
     await booking.save();
 
-    // Send message to student via Inquiry
     try {
       const Inquiry = require('../models/Inquiry.js').default || require('../models/Inquiry.js');
       let inquiry = await Inquiry.findOne({
@@ -210,14 +359,10 @@ export const respondToBookingRequest = async (req, res) => {
         });
       }
 
-      const messageText = response === 'accepted'
-        ? `Your booking request for ${booking.annex.title} from ${new Date(booking.checkInDate).toLocaleDateString()} to ${new Date(booking.checkOutDate).toLocaleDateString()} has been ACCEPTED! Please proceed with payment.`
-        : `Your booking request for ${booking.annex.title} from ${new Date(booking.checkInDate).toLocaleDateString()} to ${new Date(booking.checkOutDate).toLocaleDateString()} has been REJECTED.`;
-
       inquiry.messages.push({
         sender: req.user._id,
         senderRole: 'landlord',
-        text: messageText,
+        text: `Your booking request for ${booking.annex.title} from ${new Date(booking.checkInDate).toLocaleDateString()} to ${new Date(booking.checkOutDate).toLocaleDateString()} has been REJECTED.`,
       });
 
       await inquiry.save();

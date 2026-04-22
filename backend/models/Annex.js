@@ -24,6 +24,7 @@ const annexSchema = new mongoose.Schema({
     },
     roomCount: { type: String, default: '1' },
     studentsPerRoom: { type: String, default: '1' },
+    bookingVersion: { type: Number, default: 0 },
     
     location: {
         type: {

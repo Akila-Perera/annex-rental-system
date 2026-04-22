@@ -1,5 +1,87 @@
 const Annex = require('../models/Annex');
 
+const bookingModule = require('../models/Booking.js');
+const Booking = bookingModule.default || bookingModule;
+
+const parsePositiveInt = (value, fallback = 0) => {
+    const parsed = parseInt(value, 10);
+    if (Number.isNaN(parsed) || parsed < 0) return fallback;
+    return parsed;
+};
+
+const getCapacity = (annex) => {
+    const roomCount = parsePositiveInt(annex.roomCount, 1);
+    const studentsPerRoom = parsePositiveInt(annex.studentsPerRoom, 1);
+    return roomCount * studentsPerRoom;
+};
+
+const getCurrentBookingFilter = (annexId) => {
+    const now = new Date();
+    return {
+        annex: annexId,
+        status: 'confirmed',
+        checkInDate: { $lte: now },
+        checkOutDate: { $gt: now },
+    };
+};
+
+const attachAvailabilityForMany = async (annexes) => {
+    if (!annexes.length) return [];
+
+    const annexIds = annexes.map((a) => a._id);
+    const now = new Date();
+    const occupancyRows = await Booking.aggregate([
+        {
+            $match: {
+                annex: { $in: annexIds },
+                status: 'confirmed',
+                checkInDate: { $lte: now },
+                checkOutDate: { $gt: now },
+            },
+        },
+        {
+            $group: {
+                _id: '$annex',
+                occupiedSlots: { $sum: 1 },
+            },
+        },
+    ]);
+
+    const occupancyMap = new Map(
+        occupancyRows.map((row) => [String(row._id), Number(row.occupiedSlots || 0)])
+    );
+
+    return annexes.map((annexDoc) => {
+        const annex = annexDoc.toObject ? annexDoc.toObject() : annexDoc;
+        const capacity = getCapacity(annex);
+        const occupiedSlots = occupancyMap.get(String(annex._id)) || 0;
+        const availableSlots = Math.max(capacity - occupiedSlots, 0);
+
+        return {
+            ...annex,
+            totalCapacity: capacity,
+            occupiedSlots,
+            availableSlots,
+            isFull: availableSlots <= 0,
+        };
+    });
+};
+
+const attachAvailabilityForOne = async (annexDoc) => {
+    const annex = annexDoc.toObject ? annexDoc.toObject() : annexDoc;
+    const capacity = getCapacity(annex);
+    const occupiedSlots = await Booking.countDocuments(getCurrentBookingFilter(annex._id));
+    const availableSlots = Math.max(capacity - occupiedSlots, 0);
+
+    return {
+        ...annex,
+        totalCapacity: capacity,
+        occupiedSlots,
+        availableSlots,
+        isFull: availableSlots <= 0,
+    };
+};
+
 
 
 const searchAnnexes = async (req, res) => {
