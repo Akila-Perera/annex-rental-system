@@ -104,7 +104,7 @@ const WriteReviewModal = ({ propertyId, propertyTitle, onClose, onSuccess }) => 
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const [aiEnhancing, setAiEnhancing] = useState(false); // ✅ ADDED
+  const [aiEnhancing, setAiEnhancing] = useState(false);
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -221,7 +221,6 @@ const WriteReviewModal = ({ propertyId, propertyTitle, onClose, onSuccess }) => 
     }
   };
 
-  // ✅ AI ENHANCEMENT FUNCTION
   const handleAIEnhance = async () => {
     if (!formData.comment.trim()) {
       alert('Please write something before enhancing.');
@@ -363,7 +362,6 @@ const WriteReviewModal = ({ propertyId, propertyTitle, onClose, onSuccess }) => 
             {errors.title && <p className="text-red-400 text-xs mt-1">{errors.title}</p>}
           </div>
 
-          {/* ✅ UPDATED COMMENT SECTION WITH AI BUTTON */}
           <div className="mb-4">
             <div className="flex justify-between items-center mb-1">
               <label className="text-gray-400 text-xs block">Your Review *</label>
@@ -459,6 +457,9 @@ export default function AnnexDetailsPage() {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [quality, setQuality] = useState(null);
   const [reviews, setReviews] = useState([]);
+  
+  // ADDED: Sort state for reviews
+  const [sortBy, setSortBy] = useState('newest');
 
   const renderStars = (rating) => {
     return '★'.repeat(rating) + '☆'.repeat(5 - rating);
@@ -539,6 +540,24 @@ export default function AnnexDetailsPage() {
     if (reviews.length === 0) return 0;
     const sum = reviews.reduce((acc, review) => acc + (review.ratings?.overall || 0), 0);
     return (sum / reviews.length).toFixed(1);
+  };
+
+  // ADDED: Sort reviews function
+  const getSortedReviews = () => {
+    const reviewsCopy = [...reviews];
+    
+    switch (sortBy) {
+      case 'newest':
+        return reviewsCopy.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      case 'oldest':
+        return reviewsCopy.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      case 'highest':
+        return reviewsCopy.sort((a, b) => (b.ratings?.overall || 0) - (a.ratings?.overall || 0));
+      case 'lowest':
+        return reviewsCopy.sort((a, b) => (a.ratings?.overall || 0) - (b.ratings?.overall || 0));
+      default:
+        return reviewsCopy;
+    }
   };
 
   useEffect(() => {
@@ -677,6 +696,7 @@ export default function AnnexDetailsPage() {
 
   const ratingPercentages = getRatingPercentages();
   const averageRating = getAverageRating();
+  const sortedReviews = getSortedReviews(); // ADDED: Get sorted reviews
 
   return (
     <div className="min-h-screen bg-[#060f1e] text-gray-100" style={{ fontFamily: "'DM Sans', sans-serif" }}>
@@ -825,6 +845,7 @@ export default function AnnexDetailsPage() {
               )}
             </Section>
 
+            {/* UPDATED: Student Reviews Section with Sort Dropdown */}
             <Section title="Student Reviews">
               <div className="flex flex-col sm:flex-row gap-6 items-start">
                 <div className="text-center shrink-0">
@@ -856,13 +877,35 @@ export default function AnnexDetailsPage() {
                 </button>
               </div>
 
+              {/* ADDED: Sort dropdown */}
+              {reviews.length > 0 && (
+                <div className="mt-6 mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">Sort by:</span>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className="bg-[#0f1e38] border border-[#1f3058] text-gray-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500 transition cursor-pointer"
+                    >
+                      <option value="newest">📅 Newest First</option>
+                      <option value="oldest">📅 Oldest First</option>
+                      <option value="highest">⭐ Highest Rated</option>
+                      <option value="lowest">⭐ Lowest Rated</option>
+                    </select>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Showing {sortedReviews.length} of {reviews.length} reviews
+                  </div>
+                </div>
+              )}
+
               <div className="mt-5 space-y-5 divide-y divide-[#111e35]">
-                {reviews.length === 0 ? (
+                {sortedReviews.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
                     No reviews yet. Be the first to write one!
                   </div>
                 ) : (
-                  reviews.map((review) => (
+                  sortedReviews.map((review) => (
                     <div key={review._id} className="pt-5 first:pt-0">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
