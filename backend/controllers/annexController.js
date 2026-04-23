@@ -25,19 +25,54 @@ const getCurrentBookingFilter = (annexId) => {
     };
 };
 
-const attachAvailabilityForMany = async (annexes) => {
+const getOverlappingBookingFilter = (annexId, checkInDate, checkOutDate) => ({
+    annex: annexId,
+    status: 'confirmed',
+    checkInDate: { $lt: checkOutDate },
+    checkOutDate: { $gt: checkInDate },
+});
+
+const parseDateRange = ({ checkInDate, checkOutDate }) => {
+    if (!checkInDate && !checkOutDate) return null;
+    if (!checkInDate || !checkOutDate) {
+        return { error: 'Both checkInDate and checkOutDate are required when filtering by date range.' };
+    }
+
+    const parsedCheckIn = new Date(checkInDate);
+    const parsedCheckOut = new Date(checkOutDate);
+
+    if (Number.isNaN(parsedCheckIn.getTime()) || Number.isNaN(parsedCheckOut.getTime())) {
+        return { error: 'checkInDate and checkOutDate must be valid dates.' };
+    }
+
+    if (parsedCheckOut <= parsedCheckIn) {
+        return { error: 'checkOutDate must be after checkInDate.' };
+    }
+
+    return { checkInDate: parsedCheckIn, checkOutDate: parsedCheckOut };
+};
+
+const attachAvailabilityForMany = async (annexes, dateRange = null) => {
     if (!annexes.length) return [];
 
     const annexIds = annexes.map((a) => a._id);
-    const now = new Date();
+    const matchFilter = dateRange
+        ? {
+            annex: { $in: annexIds },
+            status: 'confirmed',
+            checkInDate: { $lt: dateRange.checkOutDate },
+            checkOutDate: { $gt: dateRange.checkInDate },
+        }
+        : {
+            annex: { $in: annexIds },
+            status: 'confirmed',
+            checkInDate: { $lte: new Date() },
+            checkOutDate: { $gt: new Date() },
+        };
+
     const occupancyRows = await Booking.aggregate([
         {
-            $match: {
-                annex: { $in: annexIds },
-                status: 'confirmed',
-                checkInDate: { $lte: now },
-                checkOutDate: { $gt: now },
-            },
+            $match: matchFilter,
         },
         {
             $group: {
@@ -67,10 +102,14 @@ const attachAvailabilityForMany = async (annexes) => {
     });
 };
 
-const attachAvailabilityForOne = async (annexDoc) => {
+const attachAvailabilityForOne = async (annexDoc, dateRange = null) => {
     const annex = annexDoc.toObject ? annexDoc.toObject() : annexDoc;
     const capacity = getCapacity(annex);
-    const occupiedSlots = await Booking.countDocuments(getCurrentBookingFilter(annex._id));
+    const occupiedSlots = await Booking.countDocuments(
+        dateRange
+            ? getOverlappingBookingFilter(annex._id, dateRange.checkInDate, dateRange.checkOutDate)
+            : getCurrentBookingFilter(annex._id)
+    );
     const availableSlots = Math.max(capacity - occupiedSlots, 0);
 
     return {
@@ -128,12 +167,22 @@ const searchAnnexes = async (req, res) => {
             query.tags = { $in: tags };
         }
 
+        const dateRange = parseDateRange({
+            checkInDate: req.query.checkInDate,
+            checkOutDate: req.query.checkOutDate,
+        });
+
+        if (dateRange?.error) {
+            return res.status(400).json({ success: false, message: dateRange.error });
+        }
+
         const annexes = await Annex.find(query);
+        const annexesWithAvailability = await attachAvailabilityForMany(annexes, dateRange);
 
         res.status(200).json({
             success: true,
-            count: annexes.length,
-            data: annexes
+            count: annexesWithAvailability.length,
+            data: annexesWithAvailability
         });
 
     } catch (error) {
@@ -203,10 +252,55 @@ const getAnnexById = async (req, res) => {
             return res.status(404).json({ success: false, message: "Annex not found" });
         }
 
-        res.status(200).json({ success: true, data: annex });
+        const dateRange = parseDateRange({
+            checkInDate: req.query.checkInDate,
+            checkOutDate: req.query.checkOutDate,
+        });
+
+        if (dateRange?.error) {
+            return res.status(400).json({ success: false, message: dateRange.error });
+        }
+
+        const annexWithAvailability = await attachAvailabilityForOne(annex, dateRange);
+
+        res.status(200).json({ success: true, data: annexWithAvailability });
     } catch (error) {
         console.error("Get Annex Error:", error);
         res.status(500).json({ success: false, message: "Server Error" });
+    }
+};
+
+const getAnnexAvailability = async (req, res) => {
+    try {
+        const annex = await Annex.findById(req.params.id);
+        if (!annex) {
+            return res.status(404).json({ success: false, message: 'Annex not found' });
+        }
+
+        const dateRange = parseDateRange({
+            checkInDate: req.query.checkInDate,
+            checkOutDate: req.query.checkOutDate,
+        });
+
+        if (dateRange?.error) {
+            return res.status(400).json({ success: false, message: dateRange.error });
+        }
+
+        const availability = await attachAvailabilityForOne(annex, dateRange);
+
+        return res.status(200).json({
+            success: true,
+            availability: {
+                annexId: availability._id,
+                totalCapacity: availability.totalCapacity,
+                occupiedSlots: availability.occupiedSlots,
+                availableSlots: availability.availableSlots,
+                isFull: availability.isFull,
+            },
+        });
+    } catch (error) {
+        console.error('Get Annex Availability Error:', error);
+        return res.status(500).json({ success: false, message: 'Server Error' });
     }
 };
 
@@ -333,4 +427,13 @@ const getDistanceToAnnex = async (req, res) => {
 };
 
 
-module.exports = { searchAnnexes, createAnnex, getOwnerAnnexes, getAnnexById, updateAnnex, deleteAnnex, getDistanceToAnnex };
+module.exports = {
+    searchAnnexes,
+    createAnnex,
+    getOwnerAnnexes,
+    getAnnexById,
+    getAnnexAvailability,
+    updateAnnex,
+    deleteAnnex,
+    getDistanceToAnnex,
+};
