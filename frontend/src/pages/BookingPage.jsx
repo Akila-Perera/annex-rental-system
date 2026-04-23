@@ -132,14 +132,16 @@ export default function BookingPage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [moveInDate, setMoveInDate] = useState('');
-  const [moveOutDate, setMoveOutDate] = useState('');
+  const [moveInDate, setMoveInDate] = useState(room.requestedCheckInDate || '');
+  const [moveOutDate, setMoveOutDate] = useState(room.requestedCheckOutDate || '');
   const [stayPreset, setStayPreset] = useState('custom');
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState({});
   const [statusMessage, setStatusMessage] = useState('');
   const [statusType, setStatusType] = useState('error');
   const [submitting, setSubmitting] = useState(false);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [availabilityInfo, setAvailabilityInfo] = useState(null);
   const [inquirySending, setInquirySending] = useState(false);
   const [showInquiryModal, setShowInquiryModal] = useState(false);
   const [inquiryMessage, setInquiryMessage] = useState('');
@@ -150,10 +152,7 @@ export default function BookingPage() {
     return new Date(today.getFullYear(), today.getMonth(), 1);
   });
 
-  const unavailableDates = useMemo(
-    () => ['2026-04-10', '2026-04-11', '2026-04-18', '2026-04-19', '2026-05-01'],
-    []
-  );
+  const unavailableDates = useMemo(() => [], []);
 
   const todayISO = useMemo(() => getISODate(new Date()), []);
 
@@ -161,6 +160,45 @@ export default function BookingPage() {
     () => daysBetween(moveInDate, moveOutDate),
     [moveInDate, moveOutDate]
   );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchAvailability = async () => {
+      if (!room.annexId || !moveInDate || !moveOutDate || moveOutDate <= moveInDate) {
+        setAvailabilityInfo(null);
+        return;
+      }
+
+      try {
+        setCheckingAvailability(true);
+        const response = await api.get(`/annexes/${room.annexId}/availability`, {
+          params: {
+            checkInDate: moveInDate,
+            checkOutDate: moveOutDate,
+          },
+        });
+
+        if (!cancelled) {
+          setAvailabilityInfo(response.data?.availability || null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setAvailabilityInfo(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setCheckingAvailability(false);
+        }
+      }
+    };
+
+    fetchAvailability();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [room.annexId, moveInDate, moveOutDate]);
 
   const calendarWeeks = useMemo(() => {
     const year = currentMonth.getFullYear();
@@ -263,6 +301,11 @@ export default function BookingPage() {
     if (!validateForm()) return;
     if (!room.annexId) {
       setStatusMessage('Unable to send booking request: missing annex information.');
+      return;
+    }
+    if (availabilityInfo?.isFull) {
+      setStatusType('error');
+      setStatusMessage('Room is full for the selected date range. Please choose different dates.');
       return;
     }
     try {
@@ -730,6 +773,21 @@ export default function BookingPage() {
               <div className="space-y-2.5">
                 <SummaryRow label="Move-in" value={formattedMoveIn} highlight={!!moveInDate} />
                 <SummaryRow label="Move-out" value={formattedMoveOut} highlight={!!moveOutDate} />
+                <SummaryRow
+                  label="Availability"
+                  value={
+                    !moveInDate || !moveOutDate
+                      ? 'Select dates'
+                      : checkingAvailability
+                        ? 'Checking...'
+                        : availabilityInfo
+                          ? availabilityInfo.isFull
+                            ? 'Room is full'
+                            : `${availabilityInfo.availableSlots} slot${availabilityInfo.availableSlots === 1 ? '' : 's'} left`
+                          : 'Not available'
+                  }
+                  highlight={!!availabilityInfo && !availabilityInfo.isFull}
+                />
                 <div className="border-t border-[#232E45] pt-2.5">
                   <SummaryRow
                     label="Duration"
@@ -796,7 +854,7 @@ export default function BookingPage() {
               </button>
               <button
                 type="button"
-                onClick={handleSendInquiry}
+                disabled={submitting || checkingAvailability || !!availabilityInfo?.isFull}
                 disabled={inquirySending}
                 className="inline-flex items-center justify-center rounded-xl bg-[#3b4f86] px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#4c62a3] disabled:opacity-50 disabled:cursor-not-allowed"
                 style={FONT_DISPLAY}

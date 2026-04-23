@@ -238,6 +238,13 @@ const styles = `
     animation: green-pulse 2.2s ease-in-out infinite;
     text-shadow: 0 0 8px rgba(16,185,129,0.7);
   }
+  .badge-full {
+    background: rgba(244,63,94,0.2);
+    border: 1.5px solid rgba(244,63,94,0.6);
+    color: #fda4af;
+    animation: none;
+    text-shadow: 0 0 8px rgba(244,63,94,0.6);
+  }
   .badge-dot {
     width: 7px; height: 7px;
     border-radius: 50%;
@@ -343,6 +350,16 @@ const styles = `
     background: linear-gradient(135deg, #4a96ff 0%, #2d7ef7 100%);
     box-shadow: 0 0 32px rgba(45,126,247,0.6);
     transform: scale(1.04);
+  }
+  .btn-disabled {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%) !important;
+    box-shadow: none !important;
+    cursor: not-allowed !important;
+    opacity: 0.8;
+  }
+  .btn-disabled:hover {
+    transform: none !important;
+    box-shadow: none !important;
   }
   .back-glass {
     background: rgba(255,255,255,0.05);
@@ -548,6 +565,19 @@ const styles = `
     flex: 1;
     min-width: 0;
   }
+
+  .slots-text {
+    display: block;
+    margin: 0 0 0.55rem;
+    font-size: 0.72rem;
+    color: #7dd3fc;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .slots-full-text {
+    color: #fda4af;
+  }
 `;
 
 const DEFAULT_AMENITIES = ['WiFi', 'AC', 'Parking', 'Security'];
@@ -578,6 +608,8 @@ function AnnexBookingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [selectedCheckInDate, setSelectedCheckInDate] = useState('');
+  const [selectedCheckOutDate, setSelectedCheckOutDate] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [filterPriceMin, setFilterPriceMin] = useState('');
   const [filterPriceMax, setFilterPriceMax] = useState('');
@@ -600,17 +632,24 @@ function AnnexBookingPage() {
       setLoading(true);
       setError('');
       try {
-        const res = await axios.get(`${API_BASE}/api/annexes/search`);
+        const params = {};
+        if (selectedCheckInDate && selectedCheckOutDate) {
+          params.checkInDate = selectedCheckInDate;
+          params.checkOutDate = selectedCheckOutDate;
+        }
+
+        const res = await axios.get(`${API_BASE}/api/annexes/search`, { params });
         setAnnexes(Array.isArray(res.data?.data) ? res.data.data : []);
       } catch (err) {
         console.error('Error fetching annexes:', err);
-        setError('Failed to load annexes. Please try again.');
+        const apiMessage = err?.response?.data?.message;
+        setError(apiMessage || 'Failed to load annexes. Please try again.');
       } finally {
         setLoading(false);
       }
     };
     fetchAnnexes();
-  }, []);
+  }, [selectedCheckInDate, selectedCheckOutDate]);
 
   const getImageUrl = (annex) => {
     if (annex?.imageUrl) {
@@ -633,6 +672,8 @@ function AnnexBookingPage() {
           title: annex.title,
           imageUrl: getImageUrl(annex),
           location: annex.selectedAddress || 'Near SLIIT Malabe Campus',
+          requestedCheckInDate: selectedCheckInDate || undefined,
+          requestedCheckOutDate: selectedCheckOutDate || undefined,
         },
       },
     });
@@ -640,6 +681,8 @@ function AnnexBookingPage() {
 
   const clearFilters = () => {
     setSearch('');
+    setSelectedCheckInDate('');
+    setSelectedCheckOutDate('');
     setSortBy('newest');
     setFilterPriceMin('');
     setFilterPriceMax('');
@@ -651,6 +694,8 @@ function AnnexBookingPage() {
 
   const hasActiveFilters =
     !!search.trim() ||
+    !!selectedCheckInDate ||
+    !!selectedCheckOutDate ||
     filterPriceMin !== '' ||
     filterPriceMax !== '' ||
     filterGender !== 'Any' ||
@@ -785,6 +830,26 @@ function AnnexBookingPage() {
         <div className="booking-layout">
           <aside className="filter-sidebar" aria-label="Filter listings">
             <h3>Filters</h3>
+
+            <div className="filter-block">
+              <p className="filter-block-label">Stay Dates</p>
+              <div className="filter-row-2">
+                <input
+                  className="filter-inp"
+                  type="date"
+                  value={selectedCheckInDate}
+                  onChange={(e) => setSelectedCheckInDate(e.target.value)}
+                />
+                <input
+                  className="filter-inp"
+                  type="date"
+                  min={selectedCheckInDate || undefined}
+                  value={selectedCheckOutDate}
+                  onChange={(e) => setSelectedCheckOutDate(e.target.value)}
+                />
+              </div>
+              <p className="filter-hint">Availability and slots are calculated for overlapping confirmed bookings in this range.</p>
+            </div>
 
             <div className="filter-block">
               <p className="filter-block-label">Price range (LKR / mo)</p>
@@ -990,6 +1055,10 @@ function AnnexBookingPage() {
               const studentsPerRoom = annex.studentsPerRoom || '1';
 
               const desc = generateDesc(annex);
+              const availableSlots = Number(annex?.availableSlots);
+              const hasAvailability = !Number.isNaN(availableSlots);
+              const isFull = hasAvailability ? availableSlots <= 0 : !!annex?.isFull;
+              const availableLabel = isFull ? 'Full' : 'Available';
 
               return (
                 <article key={annex._id} className="annex-card" style={{ animationDelay: cardDelay(i) }}>
@@ -1015,11 +1084,11 @@ function AnnexBookingPage() {
 
                     {/* ── Available badge ── */}
                     <span
-                      className="badge-available"
+                      className={`badge-available ${isFull ? 'badge-full' : ''}`}
                       style={{ position: 'absolute', top: 12, right: 12, zIndex: 2 }}
                     >
-                      <span className="badge-dot" />
-                      Available
+                      {!isFull && <span className="badge-dot" />}
+                      {availableLabel}
                     </span>
 
                     {/* Price overlay */}
@@ -1081,6 +1150,12 @@ function AnnexBookingPage() {
                       {desc}
                     </p>
 
+                    {hasAvailability && (
+                      <span className={`slots-text ${isFull ? 'slots-full-text' : ''}`}>
+                        {isFull ? 'Room is full' : `${availableSlots} slot${availableSlots === 1 ? '' : 's'} left`}
+                      </span>
+                    )}
+
                     {/* ── Coloured chips ── */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.9rem' }}>
                       {amenities.map((a, idx) => (
@@ -1104,11 +1179,12 @@ function AnnexBookingPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleBookNow(annex)}
-                        className="btn-glow"
-                        style={{ flex: 1, padding: '0.52rem', borderRadius: 10, fontSize: '0.76rem', fontWeight: 700, cursor: 'pointer', color: '#fff', border: 'none' }}
+                        onClick={() => !isFull && handleBookNow(annex)}
+                        disabled={isFull}
+                        className={`btn-glow ${isFull ? 'btn-disabled' : ''}`}
+                        style={{ flex: 1, padding: '0.52rem', borderRadius: 10, fontSize: '0.76rem', fontWeight: 700, cursor: isFull ? 'not-allowed' : 'pointer', color: '#fff', border: 'none' }}
                       >
-                        Book Now →
+                        {isFull ? 'Room is Full' : 'Book Now →'}
                       </button>
                     </div>
                   </div>
