@@ -1,4 +1,4 @@
-// backend/routes/watchme.js
+// backend/routes/Watchme.js
 const express = require("express");
 const router = express.Router();
 const twilio = require("twilio");
@@ -58,8 +58,9 @@ router.post("/alert", async (req, res) => {
       to: toPhone,
     });
 
-    console.log(`[WatchMe] SMS sent to ${toPhone} | SID: ${result.sid}`);
-    return res.json({ success: true, sid: result.sid, sentTo: toPhone });
+    console.log(`[WatchMe] SMS sent | SID: ${result.sid} | Status: ${result.status} | To: ${toPhone}`);
+    return res.json({ success: true, sid: result.sid, status: result.status, sentTo: toPhone });
+
   } catch (err) {
     console.error("[WatchMe] Twilio error:", err.message);
     return res.status(500).json({ error: err.message });
